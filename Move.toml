@@ -1,0 +1,14 @@
+# Move package configuration for HetraCoin on Sui
+[package]
+name = "hetracoin-sui"
+version = "1.0.0"
+authors = ["HetraFi Development Team"]
+edition = "2024"
+
+# Dependencies (if required, update this)
+[dependencies]
+Sui = { local = "../sui-framework" }
+
+# Address placeholders (replace with actual Sui addresses)
+[addresses]
+hetracoin = "0x0"
