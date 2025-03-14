@@ -1,13 +1,12 @@
-// Unit test for HetraCoin core functionality
-module hetracoin_unit::HetraCoinTest {
+// Unit test for HetraCoin transfer
+module hetracoin_unit::EventTest {
+    use sui::test_scenario::{Self};
     use sui::test_utils::assert_eq;
-    use sui::test_scenario::{Self, Scenario};
     use sui::coin::{Self, Coin, TreasuryCap};
-    use sui::transfer;
     use hetracoin::HetraCoin::{Self, HETRACOIN};
 
     #[test]
-    public fun test_transfer() {
+    public fun test_transfer_functionality() {
         let admin = @0xA;
         let user = @0xB;
         
@@ -26,31 +25,38 @@ module hetracoin_unit::HetraCoinTest {
         // Admin mints coins
         test_scenario::next_tx(scenario, admin);
         {
-            // Verify the treasury cap was created and sent to admin
-            assert!(test_scenario::has_most_recent_for_sender<TreasuryCap<HETRACOIN>>(scenario), 0);
-            
             let mut treasury_cap = test_scenario::take_from_sender<TreasuryCap<HETRACOIN>>(scenario);
             let coin = coin::mint(&mut treasury_cap, 1000, test_scenario::ctx(scenario));
-            transfer::public_transfer(coin, user);
-            
+            sui::transfer::public_transfer(coin, user);
             test_scenario::return_to_sender(scenario, treasury_cap);
         };
         
         // User transfers coins
         test_scenario::next_tx(scenario, user);
         {
-            // Verify the coin was received by the user
-            assert!(test_scenario::has_most_recent_for_sender<Coin<HETRACOIN>>(scenario), 0);
-            
             let mut coin = test_scenario::take_from_sender<Coin<HETRACOIN>>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
+            // Initial balance check
+            assert_eq(coin::value(&coin), 1000);
+            
+            // Perform the transfer
             HetraCoin::secure_transfer(&mut coin, admin, 500, ctx);
             
+            // Check remaining balance
+            assert_eq(coin::value(&coin), 500);
+            
+            test_scenario::return_to_sender(scenario, coin);
+        };
+        
+        // Check that admin received the coins
+        test_scenario::next_tx(scenario, admin);
+        {
+            let coin = test_scenario::take_from_sender<Coin<HETRACOIN>>(scenario);
             assert_eq(coin::value(&coin), 500);
             test_scenario::return_to_sender(scenario, coin);
         };
         
         test_scenario::end(scenario_val);
     }
-}
+} 

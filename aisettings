@@ -1,0 +1,4 @@
+[settings]
+language = "Move"
+project_type = "Sui"
+framework_version = "latest" 

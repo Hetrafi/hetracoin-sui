@@ -1,0 +1,35 @@
+# Build artifacts
+build/
+target/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.iml
+*.swp
+*~
+
+# Sui-specific files
+.sui/
+sui.log.*
+.history/
+
+# Move compiler artifacts
+*.mv
+
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.secret
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Dependency directories
+node_modules/
+dist/
+
+# Testing artifacts
+coverage/
