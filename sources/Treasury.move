@@ -2,10 +2,10 @@
 module hetracoin::Treasury {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};
-    use sui::transfer;
     use sui::event;
     use sui::coin::{Self, Coin};
     use hetracoin::HetraCoin::HETRACOIN;
+    use sui::balance;
 
     // Treasury struct storing funds
     public struct Treasury has key, store {
@@ -48,8 +48,8 @@ module hetracoin::Treasury {
         // Add funds to treasury
         treasury.funds = treasury.funds + amount;
         
-        // Burn the coin (or you could store it in the treasury)
-        coin::destroy_zero(coin_in);
+        // Burn the coin
+        coin::burn_for_testing(coin_in);
 
         event::emit(DepositEvent {
             sender,

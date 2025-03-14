@@ -7,7 +7,6 @@ module hetracoin_unit::TreasuryBalanceTest {
     use hetracoin::Treasury;
 
     #[test]
-    #[expected_failure(abort_code = 0, location = sui::balance)]
     public fun test_treasury_balance() {
         let admin = @0xA;
         

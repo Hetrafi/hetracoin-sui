@@ -6,11 +6,12 @@ published-at = "0x0"
 authors = ["HetraFi Development Team"]
 edition = "2024"
 
-# Dependencies (if required, update this)
+# Dependencies
 [dependencies]
 Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "devnet" }
 
-# Address placeholders (replace with actual Sui addresses)
+# Address placeholders
 [addresses]
 hetracoin = "0x0"
 hetracoin_unit = "0x0"
+hetracoin_integration = "0x0"

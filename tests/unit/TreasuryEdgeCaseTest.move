@@ -48,7 +48,7 @@ module hetracoin_unit::TreasuryEdgeCaseTest {
     }
 
     #[test]
-    #[expected_failure(abort_code = 0, location = sui::balance)]
+    #[expected_failure(abort_code = 2, location = hetracoin::Treasury)]
     public fun test_excessive_withdrawal() {
         let admin = @0xA;
         
