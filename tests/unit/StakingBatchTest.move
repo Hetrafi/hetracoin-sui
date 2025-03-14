@@ -4,7 +4,6 @@ module hetracoin_unit::StakingBatchTest {
     use sui::test_scenario;
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::transfer;
-    use std::debug;
     use std::vector;
     use sui::table;
     use hetracoin::HetraCoin::{Self, HETRACOIN};
@@ -105,9 +104,7 @@ module hetracoin_unit::StakingBatchTest {
             
             // Process rewards for all stakers
             Staking::process_rewards(&mut pool, ctx);
-            
-            // Instead of directly accessing fields, use a getter function
-            debug::print(&b"Processed rewards for all stakers");
+        
             
             test_scenario::return_shared(pool);
         };
@@ -117,7 +114,6 @@ module hetracoin_unit::StakingBatchTest {
         {
             let stake = test_scenario::take_from_sender<Staking::Stake>(scenario);
             let staked_amount = Staking::get_stake_amount(&stake);
-            debug::print(&staked_amount);
             test_scenario::return_to_sender(scenario, stake);
         };
         
@@ -126,7 +122,6 @@ module hetracoin_unit::StakingBatchTest {
         {
             let stake = test_scenario::take_from_sender<Staking::Stake>(scenario);
             let staked_amount = Staking::get_stake_amount(&stake);
-            debug::print(&staked_amount);
             test_scenario::return_to_sender(scenario, stake);
         };
         
@@ -135,7 +130,6 @@ module hetracoin_unit::StakingBatchTest {
         {
             let stake = test_scenario::take_from_sender<Staking::Stake>(scenario);
             let staked_amount = Staking::get_stake_amount(&stake);
-            debug::print(&staked_amount);
             test_scenario::return_to_sender(scenario, stake);
         };
         
