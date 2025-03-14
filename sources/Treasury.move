@@ -1,4 +1,5 @@
 // Treasury module - Securely manages HetraFi platform funds
+#[allow(duplicate_alias, unused_use)]
 module hetracoin::Treasury {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};

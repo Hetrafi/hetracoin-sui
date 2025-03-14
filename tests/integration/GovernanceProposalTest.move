@@ -1,4 +1,5 @@
 // Integration test for Governance Proposal system
+#[allow(duplicate_alias, unused_use, unused_let_mut)]
 module hetracoin_integration::GovernanceProposalTest {
     use sui::test_scenario;
     use sui::coin::{Self, TreasuryCap};

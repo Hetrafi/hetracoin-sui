@@ -1,6 +1,7 @@
-// Unit test for Governance permissions
+// Tests for Governance permissions
+#[allow(duplicate_alias)]
 module hetracoin_unit::GovernancePermissionTest {
-    use sui::test_scenario::{Self};
+    use sui::test_scenario;
     use sui::test_utils::assert_eq;
     use sui::coin::{Self, TreasuryCap};
     use sui::transfer;

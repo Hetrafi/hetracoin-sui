@@ -1,4 +1,5 @@
 // Simple integration test for HetraCoin
+#[allow(duplicate_alias)]
 module hetracoin_integration::SimpleIntegrationTest {
     use sui::test_scenario::{Self};
     use sui::test_utils::assert_eq;

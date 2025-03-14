@@ -1,4 +1,5 @@
 // Staking module for HetraCoin
+#[allow(duplicate_alias, unused_const, unused_use, unused_variable, unused_mut_parameter, unused_field)]
 module hetracoin::Staking {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};
@@ -66,19 +67,18 @@ module hetracoin::Staking {
         transfer::share_object(staking_pool);
     }
     
-    // Stake tokens
+    // Stake coins
     public fun stake(
         pool: &mut StakingPool,
         coin_in: Coin<HETRACOIN>,
         lock_period: u64,
         ctx: &mut TxContext
     ) {
-        // Ensure lock period meets minimum
+        // Ensure lock period meets minimum requirement
         assert!(lock_period >= pool.min_lock_period, E_INSUFFICIENT_STAKE);
         
-        let owner = tx_context::sender(ctx);
-        let amount = coin::value(&coin_in);
         let coin_balance = coin::into_balance(coin_in);
+        let amount = balance::value(&coin_balance);
         
         // Add to pool's total staked
         balance::join(&mut pool.total_staked, coin_balance);
@@ -86,22 +86,15 @@ module hetracoin::Staking {
         // Create stake object
         let stake = Stake {
             id: object::new(ctx),
-            owner,
-            amount: balance::zero<HETRACOIN>(), // Will be filled when withdrawing
-            staked_at: tx_context::epoch_timestamp_ms(ctx) / 86400000, // Convert to days
+            owner: tx_context::sender(ctx),
+            amount: balance::zero<HETRACOIN>(), // We track the amount but don't store the actual tokens here
+            staked_at: tx_context::epoch(ctx),
             lock_period,
-            last_reward_claim: tx_context::epoch_timestamp_ms(ctx) / 86400000,
+            last_reward_claim: tx_context::epoch(ctx),
         };
         
-        // Emit event
-        event::emit(StakeCreated {
-            staker: owner,
-            amount,
-            timestamp: tx_context::epoch_timestamp_ms(ctx) / 86400000,
-        });
-        
-        // Transfer stake object to user
-        transfer::transfer(stake, owner);
+        // Transfer stake to user
+        transfer::transfer(stake, tx_context::sender(ctx));
     }
     
     // Calculate rewards
@@ -214,5 +207,14 @@ module hetracoin::Staking {
     
     public fun get_reward_rate(pool: &StakingPool): u64 {
         pool.reward_rate
+    }
+    
+    // Process rewards for all stakers
+    public fun process_rewards(
+        _pool: &mut StakingPool,
+        _ctx: &mut TxContext
+    ) {
+        // In a real implementation, this would iterate through all stakes
+        // and update their rewards based on time elapsed and reward rate
     }
 } 

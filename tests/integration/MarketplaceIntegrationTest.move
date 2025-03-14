@@ -1,4 +1,5 @@
 // Integration test for Hetrafi marketplace with Treasury integration
+#[allow(duplicate_alias)]
 module hetracoin_integration::MarketplaceIntegrationTest {
     use sui::test_scenario;
     use sui::coin::{Self, Coin, TreasuryCap};

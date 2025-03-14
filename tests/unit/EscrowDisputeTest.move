@@ -1,4 +1,5 @@
 // Unit test for Escrow dispute resolution
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::EscrowDisputeTest {
     use sui::test_scenario;
     use sui::coin;

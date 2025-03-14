@@ -1,4 +1,5 @@
-// Governance proposal system for HetraCoin
+// Proposal module for HetraCoin governance
+#[allow(duplicate_alias, unused_use)]
 module hetracoin::Proposal {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};

@@ -1,4 +1,5 @@
 // Complex scenario tests for Escrow
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::EscrowComplexTest {
     use sui::test_scenario;
     use sui::test_utils::assert_eq;

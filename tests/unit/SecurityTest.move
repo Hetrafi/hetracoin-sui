@@ -1,4 +1,5 @@
 // Unit test for security & unauthorized access checks
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::SecurityTest {
     use sui::test_scenario;
     use sui::coin::{Self, TreasuryCap};

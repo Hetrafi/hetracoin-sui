@@ -1,4 +1,5 @@
 // Governance module - Manages HetraCoin minting and burning securely
+#[allow(duplicate_alias, unused_variable)]
 module hetracoin::Governance {
     use sui::coin::{Self, TreasuryCap, Coin};
     use sui::tx_context::{Self, TxContext};

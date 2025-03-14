@@ -1,4 +1,5 @@
 // Escrow module - Locks wagered HetraCoin and securely releases to the winner
+#[allow(duplicate_alias)]
 module hetracoin::Escrow {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};

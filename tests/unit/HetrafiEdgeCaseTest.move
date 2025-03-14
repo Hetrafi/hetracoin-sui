@@ -1,4 +1,5 @@
-// Edge case tests for Hetrafi fee system
+// Edge case tests for Hetrafi marketplace
+#[allow(duplicate_alias)]
 module hetracoin_unit::HetrafiEdgeCaseTest {
     use sui::test_scenario;
     use sui::coin::{Self, Coin};

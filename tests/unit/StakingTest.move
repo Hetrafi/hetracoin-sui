@@ -1,4 +1,5 @@
 // Unit test for Staking module
+#[allow(duplicate_alias)]
 module hetracoin_unit::StakingTest {
     use sui::test_scenario;
     use sui::coin::{Self, TreasuryCap};

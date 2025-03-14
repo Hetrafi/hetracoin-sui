@@ -1,7 +1,8 @@
-// Unit test for Treasury balance management
+// Tests for Treasury balance management
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::TreasuryBalanceTest {
     use sui::test_scenario;
-    use sui::coin;
+    use sui::coin::{Self, Coin, TreasuryCap};
     use sui::transfer;
     use hetracoin::HetraCoin::{Self, HETRACOIN};
     use hetracoin::Treasury;

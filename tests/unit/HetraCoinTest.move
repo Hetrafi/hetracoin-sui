@@ -1,4 +1,5 @@
 // Unit test for HetraCoin core functionality
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::HetraCoinTest {
     use sui::test_utils::assert_eq;
     use sui::test_scenario::{Self, Scenario};

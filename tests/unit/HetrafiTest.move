@@ -1,4 +1,5 @@
 // Unit test for HeTraFi service fees on the Hetrafi marketplace
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::HetrafiTest {
     use sui::test_scenario;
     use sui::coin::{Self, Coin};

@@ -1,16 +1,22 @@
 // Core HetraCoin token contract - Now with stronger security and event tracking
+#[allow(duplicate_alias, unused_use)]
 module hetracoin::HetraCoin {
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::tx_context::{Self, TxContext};
     use sui::transfer;
     use sui::event;
     use std::option;
+    use sui::url;
 
     /// One-time witness type for coin initialization
     public struct HETRACOIN has drop {}
 
     // Defines HetraCoin as a native fungible asset
     public struct HetraCoin has drop {}
+
+    // Error codes
+    const E_ZERO_AMOUNT: u64 = 1;
+    const EOVERFLOW: u64 = 100;
 
     // Event structure for tracking transfers
     public struct TransferEvent has copy, drop {
@@ -50,6 +56,9 @@ module hetracoin::HetraCoin {
         amount: u64, 
         ctx: &mut TxContext
     ) {
+        // Add a check for zero amount
+        assert!(amount > 0, E_ZERO_AMOUNT);
+        
         let sender = tx_context::sender(ctx);
         let split_coin = coin::split(coin, amount, ctx);
         transfer::public_transfer(split_coin, recipient);
@@ -71,9 +80,6 @@ module hetracoin::HetraCoin {
 
     // Add a constant for maximum supply
     const MAX_SUPPLY: u64 = 1000000000000; // 1 trillion coins
-    const EOVERFLOW: u64 = 100;
-
-    // Add explicit overflow/underflow checks to HetraCoin
 
     // Add a total_supply function
     public fun total_supply(): u64 {

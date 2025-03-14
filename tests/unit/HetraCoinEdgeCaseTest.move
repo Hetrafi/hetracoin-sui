@@ -1,4 +1,5 @@
 // Edge case tests for HetraCoin
+#[allow(duplicate_alias)]
 module hetracoin_unit::HetraCoinEdgeCaseTest {
     use sui::test_scenario;
     use sui::coin::{Self, Coin};

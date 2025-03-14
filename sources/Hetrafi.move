@@ -1,4 +1,5 @@
 // Marketplace module - Handles automatic 5% fee deductions
+#[allow(duplicate_alias)]
 module hetracoin::Hetrafi {
     use sui::object::{Self, UID};
     use sui::tx_context::TxContext;

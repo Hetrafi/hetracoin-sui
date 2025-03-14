@@ -1,4 +1,5 @@
 // Unit test for Peer-to-Peer Wager Escrow
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::EscrowTest {
     use sui::test_scenario;
     use sui::test_utils::assert_eq;

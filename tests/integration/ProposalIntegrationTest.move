@@ -1,4 +1,5 @@
 // Simple integration test for Proposal module
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_integration::ProposalIntegrationTest {
     use sui::test_scenario;
     use sui::coin::{Self, Coin, TreasuryCap};

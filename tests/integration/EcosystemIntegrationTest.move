@@ -1,4 +1,5 @@
 // Comprehensive integration test for the HetraCoin ecosystem
+#[allow(duplicate_alias)]
 module hetracoin_integration::EcosystemIntegrationTest {
     use sui::test_scenario;
     use sui::coin::{Self, TreasuryCap};

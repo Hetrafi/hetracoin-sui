@@ -1,7 +1,8 @@
 // Edge case tests for Treasury
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::TreasuryEdgeCaseTest {
     use sui::test_scenario;
-    use sui::coin;
+    use sui::coin::{Self, Coin};
     use sui::transfer;
     use hetracoin::HetraCoin::{Self, HETRACOIN};
     use hetracoin::Treasury;
