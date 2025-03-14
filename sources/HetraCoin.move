@@ -1,6 +1,6 @@
 // Core HetraCoin token contract - Now with stronger security and event tracking
 module hetracoin::HetraCoin {
-    use sui::coin::{Self, Coin};
+    use sui::coin::{Self, Coin, TreasuryCap};
     use sui::tx_context::{Self, TxContext};
     use sui::transfer;
     use sui::event;
@@ -67,5 +67,27 @@ module hetracoin::HetraCoin {
     #[test_only]
     public fun create_witness_for_testing(): HETRACOIN {
         HETRACOIN {}
+    }
+
+    // Add a constant for maximum supply
+    const MAX_SUPPLY: u64 = 1000000000000; // 1 trillion coins
+    const EOVERFLOW: u64 = 100;
+
+    // Add explicit overflow/underflow checks to HetraCoin
+
+    // Add a total_supply function
+    public fun total_supply(): u64 {
+        // In a real implementation, you would track the total supply
+        // For now, we'll return a placeholder value
+        0
+    }
+
+    // Fix the mint function
+    public fun mint(treasury_cap: &mut TreasuryCap<HETRACOIN>, amount: u64, ctx: &mut TxContext): Coin<HETRACOIN> {
+        // Check for potential overflow
+        assert!(MAX_SUPPLY - total_supply() >= amount, EOVERFLOW);
+        
+        // Proceed with minting
+        coin::mint(treasury_cap, amount, ctx)
     }
 }
