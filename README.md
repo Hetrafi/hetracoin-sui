@@ -59,7 +59,7 @@ For more information, please visit our website: [https://hetracoin.io]
 - Prevents over-withdrawals with balance verification
 
 ## Security and Testing
-- Comprehensive integration and unit testing with 34 passing tests
+- Comprehensive integration and unit testing
 - Robust security measures such as reentrancy guards, governance restrictions, and rate-limiting for dispute management
 - Zero-amount transfer protection to prevent transaction spam
 - Overflow checks to ensure mathematical safety
