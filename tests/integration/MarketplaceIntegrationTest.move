@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Integration test for Hetrafi marketplace with Treasury integration
 #[allow(duplicate_alias)]
 module hetracoin_integration::MarketplaceIntegrationTest {

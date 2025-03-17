@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Complex scenario tests for Escrow
 #[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::EscrowComplexTest {

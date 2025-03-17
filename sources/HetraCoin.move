@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Core HetraCoin token contract - Now with stronger security and event tracking
 #[allow(duplicate_alias, unused_use)]
 module hetracoin::HetraCoin {

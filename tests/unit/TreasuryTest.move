@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Unit test for Treasury funds management
 #[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::TreasuryTest {

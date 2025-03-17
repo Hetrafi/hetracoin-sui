@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Governance module - Manages HetraCoin minting and burning securely
 #[allow(duplicate_alias, unused_variable)]
 module hetracoin::Governance {

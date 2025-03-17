@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Staking module for HetraCoin
 #[allow(duplicate_alias, unused_const, unused_use, unused_variable, unused_mut_parameter, unused_field)]
 module hetracoin::Staking {

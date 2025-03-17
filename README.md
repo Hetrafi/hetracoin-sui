@@ -7,6 +7,65 @@ We hope that HetraCoin will bring Hetrafi into the new era of decentralized gami
 
 For more information, please visit our website: [https://hetracoin.io]
 
+## How Hetrafi.move Works with HetraCoin
+The Hetrafi.move module serves as the marketplace infrastructure for the HetraCoin ecosystem. Here's how it works:
+
+### 1. Fee Collection Mechanism: 
+The transfer_with_fee function automatically deducts a 5% fee from every transaction on the Hetrafi marketplace. This is implemented by splitting the input coin into two parts: 95% for the recipient and 5% for the platform treasury.
+
+### 2. Treasury Integration: 
+Fees collected are directed to a designated treasury address, which is stored in the Hetrafi shared object. This ensures all marketplace revenue is properly accounted for and managed.
+
+### 3. Simple Developer Interface: 
+Game developers only need to call a single function to handle payments, with fee calculation and distribution handled automatically.
+
+### 4. Transparency: 
+All fee calculations are performed on-chain with a fixed percentage, ensuring users always know exactly what fees they're paying.
+
+## HetraCoin Concept and Tokenomics
+HetraCoin (HETRA) is designed as the native currency for the Hetrafi gaming marketplace with several key features:
+
+### 1. Token Utility:
+- Payment for games and in-game items on Hetrafi
+- Staking for passive income
+- Liquidity provision rewards
+- Governance participation
+- Wager currency for peer-to-peer gaming competitions
+
+### 2. Token Economics:
+- Fixed maximum supply of 1 trillion tokens (prevents inflation)
+- 9 decimal places for microtransactions
+- Controlled minting through governance
+- Fee recycling through treasury (5% marketplace fee)
+
+### 3. Value Accrual Mechanisms:
+- Marketplace fees create buy pressure as the platform grows
+- Staking locks tokens, reducing circulating supply
+- Governance voting requires token holdings
+- Liquidity pools facilitate trading while earning providers fees
+
+### 4. Token Distribution and Sale:
+- Initial token sale to fund development
+- Strategic partner allocations
+- Team allocation with vesting
+- Community rewards and airdrops
+- Treasury allocation for ongoing development
+
+### 5. Integration with Gaming Ecosystem:
+- Players earn tokens by playing games
+- Developers receive tokens when their games are played
+- Tournament prizes paid in HETRA
+- Special items/NFTs purchasable only with HETRA
+
+The HetraCoin ecosystem creates a circular economy where:
+- Players purchase HETRA to use on the Hetrafi marketplace
+- 5% of transactions go to treasury
+- Treasury funds development, costs and staking rewards
+- Developers and players earn HETRA
+- Value increases as ecosystem usage grows
+
+This creates a sustainable economic model where all participants benefit from the growth of the platform, with built-in mechanisms to maintain token value through controlled supply and continuous utility.
+
 ## Modules & Functionality
 
 ### 1. HetraCoin Token (HetraCoin.move)
@@ -72,7 +131,20 @@ For more information, please visit our website: [https://hetracoin.io]
 - Community-driven governance and feature suggestions.
 
 ## License
-This project is licensed under the MIT License. See the LICENSE file for details.
+
+This project is licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+See the LICENSE file in the repository for the full license text.
 
 ## Contact
 For any questions or feedback, please contact us at [contact@hetracoin.io].

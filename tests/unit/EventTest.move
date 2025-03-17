@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Unit test for HetraCoin transfer
 module hetracoin_unit::EventTest {
     use sui::test_scenario::{Self};

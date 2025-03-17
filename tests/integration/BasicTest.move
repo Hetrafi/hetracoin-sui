@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 module hetracoin_integration::BasicTest {
     use sui::test_utils::assert_eq;
 

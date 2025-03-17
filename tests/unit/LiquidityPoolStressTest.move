@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Stress test for liquidity pool under heavy transaction load
 #[allow(duplicate_alias, unused_use, unused_variable)]
 module hetracoin_unit::LiquidityPoolStressTest {

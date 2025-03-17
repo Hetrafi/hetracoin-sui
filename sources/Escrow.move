@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Escrow module - Locks wagered HetraCoin and securely releases to the winner
 #[allow(duplicate_alias)]
 module hetracoin::Escrow {

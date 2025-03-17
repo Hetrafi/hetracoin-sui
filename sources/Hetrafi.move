@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Marketplace module - Handles automatic 5% fee deductions
 #[allow(duplicate_alias)]
 module hetracoin::Hetrafi {

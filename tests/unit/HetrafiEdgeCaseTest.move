@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Edge case tests for Hetrafi marketplace
 #[allow(duplicate_alias)]
 module hetracoin_unit::HetrafiEdgeCaseTest {

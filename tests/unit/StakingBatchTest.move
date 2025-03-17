@@ -1,3 +1,6 @@
+// Copyright 2025 Hetrafi Ltd.
+// SPDX-License-Identifier: Apache-2.0
+
 // Test for batch processing of staking rewards
 #[allow(duplicate_alias, unused_use, unused_variable)]
 module hetracoin_unit::StakingBatchTest {
