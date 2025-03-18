@@ -10,10 +10,14 @@ module hetracoin::Hetrafi {
     use sui::coin::{Self, Coin};
     use hetracoin::HetraCoin::HETRACOIN;
 
+    // Error codes
+    const E_REENTRANCY: u64 = 1;
+
     // Stores the treasury address for collecting fees
     public struct Hetrafi has key {
         id: UID,
         treasury: address,
+        in_execution: bool, // Reentrancy guard
     }
 
     // 5% HetraFi fee configuration
@@ -24,22 +28,32 @@ module hetracoin::Hetrafi {
     public fun create(treasury: address, ctx: &mut TxContext) {
         let hetrafi = Hetrafi {
             id: object::new(ctx),
-            treasury
+            treasury,
+            in_execution: false
         };
         transfer::share_object(hetrafi);
     }
 
     // Transfers HetraCoin with automatic 5% fee deduction
     public fun transfer_with_fee(
-        _hetrafi: &Hetrafi,
+        hetrafi: &mut Hetrafi,
         mut coin_in: Coin<HETRACOIN>, 
         _recipient: address,
         ctx: &mut TxContext
     ): (Coin<HETRACOIN>, Coin<HETRACOIN>) {
+        // Check for reentrancy
+        assert!(!hetrafi.in_execution, E_REENTRANCY);
+        
+        // Set the guard
+        hetrafi.in_execution = true;
+        
         let amount = coin::value(&coin_in);
         let fee_amount = (amount * HETRAFI_FEE_PERCENT) / FEE_DENOMINATOR;
         
         let fee_coin = coin::split(&mut coin_in, fee_amount, ctx);
+        
+        // Reset the guard before returning
+        hetrafi.in_execution = false;
         
         // Return the remaining coin for the recipient and the fee coin
         (coin_in, fee_coin)

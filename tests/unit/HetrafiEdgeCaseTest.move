@@ -2,102 +2,82 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Edge case tests for Hetrafi marketplace
-#[allow(duplicate_alias)]
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::HetrafiEdgeCaseTest {
     use sui::test_scenario;
     use sui::coin::{Self, Coin};
-    use sui::test_utils::assert_eq;
     use sui::transfer;
     use hetracoin::HetraCoin::{Self, HETRACOIN};
     use hetracoin::Hetrafi;
 
     #[test]
-    public fun test_small_amount_fee() {
+    public fun test_hetrafi_small_amount() {
         let admin = @0xA;
-        let treasury = @0xB;
-        let user = @0xC;
+        let user = @0xB;
+        let treasury = @0xC;
         
         let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         
-        // Initialize coin and Hetrafi
+        // First transaction to publish the module and initialize the coin
         test_scenario::next_tx(scenario, admin);
         {
+            // Create the coin with the one-time witness
             let ctx = test_scenario::ctx(scenario);
             let witness = HetraCoin::create_witness_for_testing();
             HetraCoin::init_for_testing(witness, ctx);
-            Hetrafi::create(treasury, ctx);
         };
         
-        // Test with very small amount (e.g., 1)
+        // Create Hetrafi marketplace
         test_scenario::next_tx(scenario, admin);
         {
             let ctx = test_scenario::ctx(scenario);
-            let small_coin = coin::mint_for_testing<HETRACOIN>(1, ctx);
-            transfer::public_transfer(small_coin, user);
+            Hetrafi::create(treasury, ctx);
         };
         
-        // User transfers with fee
-        test_scenario::next_tx(scenario, user);
+        // Test fee calculation with small amount
+        test_scenario::next_tx(scenario, admin);
         {
-            let hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
-            let coin = test_scenario::take_from_sender<Coin<HETRACOIN>>(scenario);
+            let mut hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
-            let (transferred, fee) = Hetrafi::transfer_with_fee(&hetrafi, coin, user, ctx);
+            // Create a small coin to transfer (19 tokens)
+            let coin = coin::mint_for_testing<HETRACOIN>(19, ctx);
             
-            // For amount 1, fee should be 0 (or 1 depending on your implementation)
-            // Let's assume fee is 5% rounded down
-            assert_eq(coin::value(&transferred), 1);
-            assert_eq(coin::value(&fee), 0);
+            // Transfer with fee - now using &mut reference
+            let (transferred, fee) = Hetrafi::transfer_with_fee(&mut hetrafi, coin, user, ctx);
             
+            // Verify fee is 5% (0 tokens due to rounding)
+            assert!(coin::value(&fee) == 0, 0);
+            
+            // Verify remaining amount is 100% (19 tokens)
+            assert!(coin::value(&transferred) == 19, 0);
+            
+            // Clean up
             transfer::public_transfer(transferred, user);
             transfer::public_transfer(fee, treasury);
             test_scenario::return_shared(hetrafi);
         };
         
-        test_scenario::end(scenario_val);
-    }
-
-    #[test]
-    public fun test_zero_amount_fee() {
-        let admin = @0xA;
-        let treasury = @0xB;
-        let user = @0xC;
-        
-        let mut scenario_val = test_scenario::begin(admin);
-        let scenario = &mut scenario_val;
-        
-        // Initialize coin and Hetrafi
+        // Test fee calculation with zero amount
         test_scenario::next_tx(scenario, admin);
         {
-            let ctx = test_scenario::ctx(scenario);
-            let witness = HetraCoin::create_witness_for_testing();
-            HetraCoin::init_for_testing(witness, ctx);
-            Hetrafi::create(treasury, ctx);
-        };
-        
-        // Test with zero amount
-        test_scenario::next_tx(scenario, admin);
-        {
-            let ctx = test_scenario::ctx(scenario);
-            let zero_coin = coin::mint_for_testing<HETRACOIN>(0, ctx);
-            transfer::public_transfer(zero_coin, user);
-        };
-        
-        // User transfers with fee
-        test_scenario::next_tx(scenario, user);
-        {
-            let hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
-            let coin = test_scenario::take_from_sender<Coin<HETRACOIN>>(scenario);
+            let mut hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
-            let (transferred, fee) = Hetrafi::transfer_with_fee(&hetrafi, coin, user, ctx);
+            // Create a zero-value coin
+            let coin = coin::mint_for_testing<HETRACOIN>(0, ctx);
             
-            // For amount 0, both transferred and fee should be 0
-            assert_eq(coin::value(&transferred), 0);
-            assert_eq(coin::value(&fee), 0);
+            // Transfer with fee - now using &mut reference
+            let (transferred, fee) = Hetrafi::transfer_with_fee(&mut hetrafi, coin, user, ctx);
             
+            // Verify fee is 0
+            assert!(coin::value(&fee) == 0, 0);
+            
+            // Verify remaining amount is 0
+            assert!(coin::value(&transferred) == 0, 0);
+            
+            // Clean up
             transfer::public_transfer(transferred, user);
             transfer::public_transfer(fee, treasury);
             test_scenario::return_shared(hetrafi);

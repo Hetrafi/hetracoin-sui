@@ -65,7 +65,7 @@ module hetracoin_unit::EscrowDisputeTest {
     }
 
     #[test]
-    #[expected_failure(abort_code = 8)]
+    #[expected_failure(abort_code = Escrow::E_DISPUTE_RATE_LIMIT, location = hetracoin::Escrow)]
     public fun test_dispute_abuse() {
         let admin = @0xA;
         let sender = @0xB;

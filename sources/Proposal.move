@@ -142,6 +142,7 @@ module hetracoin::Proposal {
     }
     
     // Vote on a proposal
+    #[allow(lint(self_transfer))]
     public fun vote(
         governance: &mut GovernanceSystem,
         proposal_id: u64,
@@ -199,8 +200,13 @@ module hetracoin::Proposal {
         // Transfer receipt to voter
         transfer::transfer(receipt, voter);
         
-        // Burn the voting power coin
-        coin::burn_for_testing(voting_power);
+        if (voting_amount > 0) {
+            // Return the voting power coin to the voter
+            transfer::public_transfer(voting_power, voter);
+        } else {
+            // If it's a zero coin, we can destroy it
+            coin::destroy_zero(voting_power);
+        }
     }
     
     // Finalize proposal after voting period

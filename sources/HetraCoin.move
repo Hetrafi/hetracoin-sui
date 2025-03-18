@@ -91,7 +91,6 @@ module hetracoin::HetraCoin {
         0
     }
 
-    // Fix the mint function
     public fun mint(treasury_cap: &mut TreasuryCap<HETRACOIN>, amount: u64, ctx: &mut TxContext): Coin<HETRACOIN> {
         // Check for potential overflow
         assert!(MAX_SUPPLY - total_supply() >= amount, EOVERFLOW);

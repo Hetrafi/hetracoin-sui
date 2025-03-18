@@ -110,20 +110,18 @@ module hetracoin_integration::EcosystemIntegrationTest {
         // User1 makes a purchase through Hetrafi
         test_scenario::next_tx(scenario, user1);
         {
-            let hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
-            let mut coins = test_scenario::take_from_sender<coin::Coin<HETRACOIN>>(scenario);
+            let mut hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
-            // Split coins - 1000 for purchase, rest remains
-            let purchase_coins = coin::split(&mut coins, 1000, ctx);
+            // Create purchase coins
+            let purchase_coins = coin::mint_for_testing<HETRACOIN>(1000, ctx);
             
-            // Transfer with fee
-            let (payment, fee) = Hetrafi::transfer_with_fee(&hetrafi, purchase_coins, user2, ctx);
+            // Process payment with fee - now using &mut reference
+            let (payment, fee) = Hetrafi::transfer_with_fee(&mut hetrafi, purchase_coins, user2, ctx);
             
             // Transfer coins
             transfer::public_transfer(payment, user2);
             transfer::public_transfer(fee, treasury_addr);
-            transfer::public_transfer(coins, user1);
             
             test_scenario::return_shared(hetrafi);
         };

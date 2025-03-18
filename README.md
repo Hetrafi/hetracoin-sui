@@ -118,6 +118,24 @@ This creates a sustainable economic model where all participants benefit from th
 - Prevents over-withdrawals with balance verification
 
 ## Security and Testing
+
+### Key Management
+- Never commit private keys or mnemonics to the repository
+- Store your private keys in the `.env` file which is gitignored
+- For development, use different keys than production
+- The `sui keytool` can be used to generate new keys when needed
+
+### Deployment
+- Always test on testnet before deploying to mainnet
+- Verify deployments using the verification script
+- Keep deployment artifacts (deployment-*.json files) private as they may contain sensitive information
+
+### Access Control
+- The treasury and admin addresses should be secure multisig wallets for production
+- Rotate keys periodically for enhanced security
+- Use different keys for different environments (testnet/mainnet)
+
+### Testing
 - Comprehensive integration and unit testing
 - Robust security measures such as reentrancy guards, governance restrictions, and rate-limiting for dispute management
 - Zero-amount transfer protection to prevent transaction spam

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Test for batch processing of staking rewards
-#[allow(duplicate_alias, unused_use, unused_variable)]
+#[allow(duplicate_alias, unused_use, unused_variable, unused_let_mut)]
 module hetracoin_unit::StakingBatchTest {
     use sui::test_scenario;
     use sui::coin::{Self, Coin, TreasuryCap};

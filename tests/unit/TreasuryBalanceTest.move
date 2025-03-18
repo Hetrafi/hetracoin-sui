@@ -5,13 +5,13 @@
 #[allow(duplicate_alias, unused_use)]
 module hetracoin_unit::TreasuryBalanceTest {
     use sui::test_scenario;
-    use sui::coin::{Self, Coin, TreasuryCap};
+    use sui::coin::{Self, Coin};
     use sui::transfer;
     use hetracoin::HetraCoin::{Self, HETRACOIN};
     use hetracoin::Treasury;
 
     #[test]
-    public fun test_treasury_balance() {
+    public fun test_treasury_balance_management() {
         let admin = @0xA;
         
         let mut scenario_val = test_scenario::begin(admin);
@@ -34,7 +34,7 @@ module hetracoin_unit::TreasuryBalanceTest {
             transfer::public_transfer(treasury, admin);
         };
         
-        // Deposit funds and check balance
+        // Test deposit and withdrawal
         test_scenario::next_tx(scenario, admin);
         {
             let mut treasury = test_scenario::take_from_sender<Treasury::Treasury>(scenario);
@@ -43,11 +43,17 @@ module hetracoin_unit::TreasuryBalanceTest {
             // Create some coins to deposit
             let coin = coin::mint_for_testing<HETRACOIN>(1000, ctx);
             
-            // Deposit the coin - this will fail with code 0 from sui::balance
+            // Deposit the coin - now uses balance instead of burning
             Treasury::deposit(&mut treasury, coin, ctx);
+            
+            // Check balance using the getter function
+            assert!(Treasury::get_balance(&treasury) == 1000, 0);
             
             // Admin withdraws some funds
             Treasury::withdraw(&mut treasury, 300, ctx);
+            
+            // Check updated balance
+            assert!(Treasury::get_balance(&treasury) == 700, 0);
             
             // Clean up
             transfer::public_transfer(treasury, admin);
@@ -86,11 +92,14 @@ module hetracoin_unit::TreasuryBalanceTest {
             let mut treasury = test_scenario::take_from_sender<Treasury::Treasury>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
-            // Create a coin with zero value to deposit (this should work)
-            let coin = coin::mint_for_testing<HETRACOIN>(0, ctx);
+            // Create some coins to deposit
+            let coin = coin::mint_for_testing<HETRACOIN>(500, ctx);
             
             // Deposit the coin
             Treasury::deposit(&mut treasury, coin, ctx);
+            
+            // Check balance using the getter function
+            assert!(Treasury::get_balance(&treasury) == 500, 0);
             
             // Clean up
             transfer::public_transfer(treasury, admin);

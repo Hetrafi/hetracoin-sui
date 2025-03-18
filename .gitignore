@@ -1,35 +1,45 @@
-# Build artifacts
-build/
-target/
+# Node dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
 
-# IDE and editor files
-.idea/
-.vscode/
-*.iml
-*.swp
-*~
-
-# Sui-specific files
-.sui/
-sui.log.*
-.history/
-
-# Move compiler artifacts
-*.mv
-
-# Environment variables and secrets
+# Environment variables
 .env
 .env.local
-.env.*.local
-*.secret
+.env.development
+.env.test
+.env.production
 
-# OS-specific files
+# Sui build artifacts
+build/
+.coverage_map.mvcov
+.coverage_summary.mvcov
+
+# Deployment files with sensitive info
+deployment-*.json
+initialization-*.json
+
+# Private keys and mnemonics
+*.key
+keys/
+mnemonics/
+*private*
+*secret*
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
 .DS_Store
 Thumbs.db
 
-# Dependency directories
-node_modules/
-dist/
+# Logs
+logs/
+*.log
 
-# Testing artifacts
+# Testing
 coverage/

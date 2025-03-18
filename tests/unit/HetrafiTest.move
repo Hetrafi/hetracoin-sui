@@ -12,43 +12,49 @@ module hetracoin_unit::HetrafiTest {
     use hetracoin::Hetrafi;
 
     #[test]
-    public fun test_fee_deduction() {
+    public fun test_hetrafi_fee_calculation() {
         let admin = @0xA;
-        let treasury = @0xB;
-        let user = @0xC;
+        let user = @0xB;
+        let treasury = @0xC;
         
         let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         
-        // Create Hetrafi instance
+        // First transaction to publish the module and initialize the coin
+        test_scenario::next_tx(scenario, admin);
+        {
+            // Create the coin with the one-time witness
+            let ctx = test_scenario::ctx(scenario);
+            let witness = HetraCoin::create_witness_for_testing();
+            HetraCoin::init_for_testing(witness, ctx);
+        };
+        
+        // Create Hetrafi marketplace
         test_scenario::next_tx(scenario, admin);
         {
             let ctx = test_scenario::ctx(scenario);
             Hetrafi::create(treasury, ctx);
         };
         
-        // Mint coins for user
+        // Test fee calculation
         test_scenario::next_tx(scenario, admin);
         {
+            let mut hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
             let ctx = test_scenario::ctx(scenario);
+            
+            // Create a coin to transfer
             let coin = coin::mint_for_testing<HETRACOIN>(1000, ctx);
-            transfer::public_transfer(coin, user);
-        };
-        
-        // User transfers with fee
-        test_scenario::next_tx(scenario, user);
-        {
-            let hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
-            let coin = test_scenario::take_from_sender<Coin<HETRACOIN>>(scenario);
-            let ctx = test_scenario::ctx(scenario);
             
-            let (transferred, fee) = Hetrafi::transfer_with_fee(&hetrafi, coin, user, ctx);
+            // Transfer with fee - now using &mut reference
+            let (transferred, fee) = Hetrafi::transfer_with_fee(&mut hetrafi, coin, user, ctx);
             
-            // Check amounts
-            assert_eq(coin::value(&transferred), 950);
-            assert_eq(coin::value(&fee), 50);
+            // Verify fee is 5% (50 tokens)
+            assert!(coin::value(&fee) == 50, 0);
             
-            // Return objects and transfer coins
+            // Verify remaining amount is 95% (950 tokens)
+            assert!(coin::value(&transferred) == 950, 0);
+            
+            // Clean up
             transfer::public_transfer(transferred, user);
             transfer::public_transfer(fee, treasury);
             test_scenario::return_shared(hetrafi);

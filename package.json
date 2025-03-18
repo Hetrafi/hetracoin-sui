@@ -1,0 +1,23 @@
+{
+  "name": "hetracoin-deployment",
+  "version": "1.0.0",
+  "description": "Deployment scripts for HetraCoin",
+  "main": "scripts/deploy.js",
+  "scripts": {
+    "build": "tsc",
+    "deploy:testnet": "node scripts/deploy.js deploy testnet",
+    "deploy:mainnet": "node scripts/deploy.js deploy mainnet",
+    "verify:testnet": "node scripts/deploy.js verify testnet",
+    "verify:mainnet": "node scripts/deploy.js verify mainnet"
+  },
+  "dependencies": {
+    "@mysten/sui.js": "^0.41.0",
+    "dotenv": "^16.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^18.15.11",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "typescript": "^5.0.4"
+  }
+}
