@@ -220,4 +220,38 @@ module hetracoin::Staking {
         // In a real implementation, this would iterate through all stakes
         // and update their rewards based on time elapsed and reward rate
     }
+    
+    // Add a withdraw_stake function with proper authorization
+    public fun withdraw_stake(
+        pool: &mut StakingPool,
+        stake_id: ID,
+        ctx: &mut TxContext
+    ): Coin<HETRACOIN> {
+        // Find the stake by ID
+        let stake = find_stake_by_id(pool, stake_id, ctx);
+        
+        // Check that the caller is the stake owner
+        assert!(stake.owner == tx_context::sender(ctx), E_NOT_OWNER);
+        
+        // Check if lock period has passed
+        let current_time = tx_context::epoch_timestamp_ms(ctx) / 86400000;
+        assert!(current_time >= stake.staked_at + stake.lock_period, E_STAKE_LOCKED);
+        
+        // Withdraw the stake
+        withdraw(pool, stake, ctx)
+    }
+    
+    // Helper function to find a stake by ID (simplified for example)
+    fun find_stake_by_id(_pool: &StakingPool, stake_id: ID, ctx: &mut TxContext): Stake {
+        // In a real implementation, you would search for the stake
+        // For now, we'll just create a dummy stake
+        Stake {
+            id: object::new(ctx),
+            owner: @0x0, // This will fail the authorization check
+            amount: balance::zero<HETRACOIN>(),
+            staked_at: 0,
+            lock_period: 0,
+            last_reward_claim: 0,
+        }
+    }
 } 

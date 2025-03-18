@@ -3,12 +3,13 @@
 name = "hetracoin-sui"
 version = "0.1.0"
 published-at = "0x0"
-authors = ["HetraFi Development Team"]
+authors = ["Hetrafi Dev Team"]
 edition = "2024"
 
 # Dependencies
 [dependencies]
-Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "main" }
+# TESTS PASSING WITH VERSION 1.44.3
+Sui = { local = "../sui/crates/sui-framework/packages/sui-framework" }
 
 # Address placeholders
 [addresses]

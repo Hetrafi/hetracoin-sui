@@ -12,6 +12,7 @@ module hetracoin::Hetrafi {
 
     // Error codes
     const E_REENTRANCY: u64 = 1;
+    const E_ZERO_AMOUNT: u64 = 2;
 
     // Stores the treasury address for collecting fees
     public struct Hetrafi has key {
@@ -38,7 +39,7 @@ module hetracoin::Hetrafi {
     public fun transfer_with_fee(
         hetrafi: &mut Hetrafi,
         mut coin_in: Coin<HETRACOIN>, 
-        _recipient: address,
+        _recipient: address,  // Add underscore to indicate unused parameter
         ctx: &mut TxContext
     ): (Coin<HETRACOIN>, Coin<HETRACOIN>) {
         // Check for reentrancy
@@ -47,9 +48,14 @@ module hetracoin::Hetrafi {
         // Set the guard
         hetrafi.in_execution = true;
         
+        // Validate the coin is not zero
         let amount = coin::value(&coin_in);
+        assert!(amount > 0, E_ZERO_AMOUNT);
+        
+        // Calculate fee
         let fee_amount = (amount * HETRAFI_FEE_PERCENT) / FEE_DENOMINATOR;
         
+        // Split the fee
         let fee_coin = coin::split(&mut coin_in, fee_amount, ctx);
         
         // Reset the guard before returning

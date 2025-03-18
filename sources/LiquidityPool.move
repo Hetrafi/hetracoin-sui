@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Liquidity Pool module for HetraCoin
+
+// SHELVED FOR THE MEANTIME, WILL LOOK TO PARTNER WITH AN EXISTING LIQUIDITY PROVIDER!
+
+
 #[allow(duplicate_alias, unused_use, unused_variable, unused_mut_parameter, unused_let_mut, unused_const)]
 module hetracoin::LiquidityPool {
     use sui::object::{Self, UID, ID};

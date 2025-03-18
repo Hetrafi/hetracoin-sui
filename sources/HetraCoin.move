@@ -20,6 +20,7 @@ module hetracoin::HetraCoin {
     // Error codes
     const E_ZERO_AMOUNT: u64 = 1;
     const EOVERFLOW: u64 = 100;
+    const E_NOT_AUTHORIZED: u64 = 101;
 
     // Event structure for tracking transfers
     public struct TransferEvent has copy, drop {
@@ -95,7 +96,17 @@ module hetracoin::HetraCoin {
         // Check for potential overflow
         assert!(MAX_SUPPLY - total_supply() >= amount, EOVERFLOW);
         
+        // Add explicit authorization check
+        assert!(tx_context::sender(ctx) == governance_admin(treasury_cap), E_NOT_AUTHORIZED);
+        
         // Proceed with minting
         coin::mint(treasury_cap, amount, ctx)
+    }
+
+    // Helper function to get the admin
+    fun governance_admin(_treasury_cap: &TreasuryCap<HETRACOIN>): address {
+        // In a real implementation, you would get this from the treasury cap
+        // For now, we'll use a constant
+        @0xA // Replace with your actual admin address
     }
 }
