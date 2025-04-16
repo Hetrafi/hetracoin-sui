@@ -16,7 +16,7 @@ module hetracoin_unit::HetrafiEdgeCaseTest {
         let user = @0xB;
         let treasury = @0xC;
         
-        let scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         
         // First transaction to publish the module and initialize the coin
@@ -38,7 +38,7 @@ module hetracoin_unit::HetrafiEdgeCaseTest {
         // Test fee calculation with small amount
         test_scenario::next_tx(scenario, admin);
         {
-            let hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
+            let mut hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
             // Create a small coin to transfer (19 tokens)
@@ -69,7 +69,7 @@ module hetracoin_unit::HetrafiEdgeCaseTest {
         let user = @0xB;
         let treasury = @0xC;
         
-        let scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = test_scenario::begin(admin);
         let scenario = &mut scenario_val;
         
         // First transaction to publish the module and initialize the coin
@@ -91,7 +91,7 @@ module hetracoin_unit::HetrafiEdgeCaseTest {
         // Test fee calculation with zero amount - this should fail
         test_scenario::next_tx(scenario, admin);
         {
-            let hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
+            let mut hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
             // Create a zero-value coin

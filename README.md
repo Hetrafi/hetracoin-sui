@@ -131,9 +131,9 @@ This creates a sustainable economic model where all participants benefit from th
 - Keep deployment artifacts (deployment-*.json files) private as they may contain sensitive information
 
 ### Access Control
-- The treasury and admin addresses should be secure multisig wallets for production
-- Rotate keys periodically for enhanced security
-- Use different keys for different environments (testnet/mainnet)
+- The treasury and admin addresses will be secure multisig wallets for production
+- Keys rotated periodically for enhanced security
+- Different keys for different environments (testnet/mainnet)
 
 ### Testing
 - Comprehensive integration and unit testing
