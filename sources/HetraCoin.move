@@ -85,16 +85,14 @@ module hetracoin::HetraCoin {
     // Add a constant for maximum supply
     const MAX_SUPPLY: u64 = 1000000000000; // 1 trillion coins
 
-    // Add a total_supply function
-    public fun total_supply(): u64 {
-        // In a real implementation, you would track the total supply
-        // For now, we'll return a placeholder value
-        0
+    // Get the current total supply of HetraCoin
+    public fun total_supply(treasury_cap: &TreasuryCap<HETRACOIN>): u64 {
+        coin::total_supply(treasury_cap)
     }
 
     public fun mint(treasury_cap: &mut TreasuryCap<HETRACOIN>, amount: u64, ctx: &mut TxContext): Coin<HETRACOIN> {
         // Check for potential overflow
-        assert!(MAX_SUPPLY - total_supply() >= amount, EOVERFLOW);
+        assert!(MAX_SUPPLY - total_supply(treasury_cap) >= amount, EOVERFLOW);
         
         // Add explicit authorization check
         assert!(tx_context::sender(ctx) == governance_admin(treasury_cap), E_NOT_AUTHORIZED);
@@ -104,9 +102,17 @@ module hetracoin::HetraCoin {
     }
 
     // Helper function to get the admin
-    fun governance_admin(_treasury_cap: &TreasuryCap<HETRACOIN>): address {
-        // In a real implementation, you would get this from the treasury cap
-        // For now, we'll use a constant
-        @0xA // Replace with your actual admin address
+    public fun governance_admin(treasury_cap: &TreasuryCap<HETRACOIN>): address {
+        // Get the owner of the treasury cap
+        let cap_owner = coin::treasury_cap_owner(treasury_cap);
+        
+        // If the treasury cap has an owner (is not shared), return that address
+        if (option::is_some(&cap_owner)) {
+            option::destroy_some(cap_owner)
+        } else {
+            // If the treasury cap is shared, return a default admin address
+            // In a production system, this should be properly configured
+            @0x5a65726f5f6f6e655f636f6d6573 // Replace with a proper admin address
+        }
     }
 }

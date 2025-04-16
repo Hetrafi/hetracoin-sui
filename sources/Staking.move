@@ -4,7 +4,7 @@
 // Staking module for HetraCoin
 #[allow(duplicate_alias, unused_const, unused_use, unused_variable, unused_mut_parameter, unused_field)]
 module hetracoin::Staking {
-    use sui::object::{Self, UID};
+    use sui::object::{Self, UID, ID};
     use sui::tx_context::{Self, TxContext};
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
@@ -242,7 +242,7 @@ module hetracoin::Staking {
     }
     
     // Helper function to find a stake by ID (simplified for example)
-    fun find_stake_by_id(_pool: &StakingPool, stake_id: ID, ctx: &mut TxContext): Stake {
+    fun find_stake_by_id(_pool: &StakingPool, _stake_id: ID, ctx: &mut TxContext): Stake {
         // In a real implementation, you would search for the stake
         // For now, we'll just create a dummy stake
         Stake {

@@ -7,11 +7,12 @@ module hetracoin::Governance {
     use sui::coin::{Self, TreasuryCap, Coin};
     use sui::tx_context::{Self, TxContext};
     use sui::event;
-    use hetracoin::HetraCoin::HETRACOIN;
+    use sui::object::{Self, UID};
+    use sui::transfer;
+    use hetracoin::HetraCoin::{Self, HETRACOIN};
 
     // Maximum minting limit per transaction
     const MAX_MINT: u64 = 1_000_000_000; // 1 Billion HETRA max per mint
-    const ADMIN_ADDRESS: address = @0xA; // Replace with actual admin address
 
     // Error codes
     const E_NOT_AUTHORIZED: u64 = 1;
@@ -42,7 +43,7 @@ module hetracoin::Governance {
         let sender = tx_context::sender(ctx);
         
         // Only admin can mint
-        assert!(sender == ADMIN_ADDRESS, E_NOT_AUTHORIZED);
+        assert!(sender == HetraCoin::governance_admin(treasury_cap), E_NOT_AUTHORIZED);
         
         // Enforce maximum mint amount
         assert!(amount <= MAX_MINT, E_EXCEEDS_MAX_MINT);
@@ -69,7 +70,7 @@ module hetracoin::Governance {
         let sender = tx_context::sender(ctx);
         
         // Only admin can burn
-        assert!(sender == ADMIN_ADDRESS, E_NOT_AUTHORIZED);
+        assert!(sender == HetraCoin::governance_admin(treasury_cap), E_NOT_AUTHORIZED);
         
         let amount = coin::value(&coin_to_burn);
         coin::burn(treasury_cap, coin_to_burn);
@@ -89,7 +90,7 @@ module hetracoin::Governance {
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
-        assert!(sender == governance_admin(treasury_cap), E_NOT_AUTHORIZED);
+        assert!(sender == HetraCoin::governance_admin(treasury_cap), E_NOT_AUTHORIZED);
         
         // Create a transfer request that the new admin must accept
         let transfer_request = GovernanceTransferRequest {
@@ -116,7 +117,7 @@ module hetracoin::Governance {
         assert!(current_time - transfer_request.timestamp < 86400000, EREQUEST_EXPIRED); // 24 hours
         
         // Transfer governance
-        transfer_treasury_cap(treasury_cap, sender);
+        transfer_treasury_cap(treasury_cap, sender, ctx);
         
         // Destroy the request
         let GovernanceTransferRequest { id, from: _, to: _, timestamp: _ } = transfer_request;
@@ -131,17 +132,14 @@ module hetracoin::Governance {
         timestamp: u64
     }
 
-    // Add these functions to the Governance module
-    public fun governance_admin(treasury_cap: &TreasuryCap<HETRACOIN>): address {
-        // For simplicity, we'll use the ADMIN_ADDRESS constant
-        // In a real implementation, you might want to get this from the treasury cap
-        ADMIN_ADDRESS
-    }
-
-    public fun transfer_treasury_cap(treasury_cap: &mut TreasuryCap<HETRACOIN>, new_admin: address) {
-        // In a real implementation, you would transfer the treasury cap to the new admin
-        // For now, we'll just assert that the caller is authorized
-        // Note: We can't actually transfer the treasury cap in this function
-        // since we don't have a ctx parameter
+    // Transfer the treasury cap to the new admin
+    public fun transfer_treasury_cap(treasury_cap: &mut TreasuryCap<HETRACOIN>, new_admin: address, ctx: &mut TxContext) {
+        // In a real implementation with a shared TreasuryCap, you would implement the transfer here
+        // For this example, we just verify the current admin is calling this function
+        let sender = tx_context::sender(ctx);
+        assert!(sender == HetraCoin::governance_admin(treasury_cap), E_NOT_AUTHORIZED);
+        
+        // Note: In a production environment, you would implement the actual transfer logic
+        // This might involve updating a field in a shared object or other mechanisms
     }
 }
