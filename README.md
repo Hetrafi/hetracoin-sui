@@ -53,7 +53,6 @@ HetraCoin (HETRA) is designed as the native currency for the Hetrafi gaming mark
 
 ### 5. Integration with Gaming Ecosystem:
 - Players earn tokens by playing games
-- Developers receive tokens when their games are played
 - Tournament prizes paid in HETRA
 - Special items/NFTs purchasable only with HETRA
 
@@ -121,7 +120,7 @@ This creates a sustainable economic model where all participants benefit from th
 
 ### Key Management
 - Never commit private keys or mnemonics to the repository
-- Store your private keys in the `.env` file which is gitignored
+- Store private keys in the `.env` file which is gitignored
 - For development, use different keys than production
 - The `sui keytool` can be used to generate new keys when needed
 
