@@ -26,6 +26,7 @@ keys/
 mnemonics/
 *private*
 *secret*
+*key*
 
 # IDE files
 .idea/
