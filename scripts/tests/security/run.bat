@@ -1,0 +1,3 @@
+@echo off
+npx ts-node setup-coins.ts --package 0x894f2ee95f0368794df8778f7d4d1714d02766dd6d7095188fa51f5a360b66ea --treasury 0x3c85e7b873d532c061786c7c239367acc0d2dabc6cdc4b1ca6c13949ca007e60
+pause 

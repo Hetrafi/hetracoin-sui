@@ -60,7 +60,7 @@ async function buildAndPublish(projectRoot: string): Promise<string> {
     console.log(`\n--- Publishing Package to ${NETWORK} (using active Sui CLI environment) ---`);
     try {
         // Remove --network flag, assuming CLI environment is pre-configured
-        const publishCommand = `sui client publish --gas-budget ${GAS_BUDGET_PUBLISH} --json`;
+        const publishCommand = `sui client publish --gas-budget ${GAS_BUDGET_PUBLISH} --skip-fetch-latest-git-deps --json`;
         console.log(`Executing: ${publishCommand}`); 
         const publishOutput = execSync(publishCommand, {
             cwd: projectRoot,

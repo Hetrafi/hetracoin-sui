@@ -300,26 +300,42 @@ async function main() {
     // Setup Shared Objects (Manual step required for Testnet)
     if (!MOCK_MODE && NETWORK === 'testnet') {
       console.log('\nConfiguring for Testnet using provided package ID...');
-      // !!! CRITICAL MANUAL STEP !!!
-      // Replace these with the ACTUAL Object IDs from your Testnet deployment
-      sharedObjects.treasuryCapId = 'PASTE_YOUR_TESTNET_TREASURY_CAP_ID_HERE'; 
-      sharedObjects.adminCoinId = 'PASTE_YOUR_TESTNET_ADMIN_COIN_ID_HERE';     
-      sharedObjects.userCoinId = 'PASTE_YOUR_TESTNET_USER_COIN_ID_HERE';      
+      
+      // Try to load config from test-config.json
+      try {
+        const configPath = path.join(__dirname, 'test-config.json');
+        if (fs.existsSync(configPath)) {
+          const testConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+          sharedObjects.treasuryCapId = testConfig.treasuryCapId;
+          sharedObjects.adminCoinId = testConfig.adminCoinId;
+          sharedObjects.userCoinId = testConfig.userCoinId;
+          
+          console.log('Loaded test configuration from test-config.json:');
+          console.log(`Treasury Cap ID: ${sharedObjects.treasuryCapId}`);
+          console.log(`Admin Coin ID: ${sharedObjects.adminCoinId}`);
+          console.log(`User Coin ID: ${sharedObjects.userCoinId}`);
+        } else {
+          // Fall back to manual configuration
+          sharedObjects.treasuryCapId = '0x3c85e7b873d532c061786c7c239367acc0d2dabc6cdc4b1ca6c13949ca007e60'; 
+          sharedObjects.adminCoinId = ''; // Will be created during the test process
+          sharedObjects.userCoinId = '';  // Will be created during the test process
+          
+          console.log(`Using Treasury Cap ID: ${sharedObjects.treasuryCapId}`);
+          console.log(`No coin IDs found. Please run setup-coins.ts first to mint test coins:`);
+          console.log(`npx ts-node setup-coins.ts --package ${packageId} --treasury ${sharedObjects.treasuryCapId}`);
+        }
+      } catch (error) {
+        console.error('Error loading test configuration:', error);
+        // Fall back to manual configuration
+        sharedObjects.treasuryCapId = '0x3c85e7b873d532c061786c7c239367acc0d2dabc6cdc4b1ca6c13949ca007e60';
+        console.log(`Using Treasury Cap ID: ${sharedObjects.treasuryCapId}`);
+        console.log('Error loading coin IDs. Please run setup-coins.ts first to mint test coins');
+      }
 
-      console.log(`Using Treasury Cap ID: ${sharedObjects.treasuryCapId}`);
-      console.log(`Using Admin Coin ID: ${sharedObjects.adminCoinId}`);
-      console.log(`Using User Coin ID: ${sharedObjects.userCoinId}`);
-
-      if (!sharedObjects.treasuryCapId || sharedObjects.treasuryCapId.startsWith('PASTE_YOUR') ||
-          !sharedObjects.adminCoinId || sharedObjects.adminCoinId.startsWith('PASTE_YOUR') ||
-          !sharedObjects.userCoinId || sharedObjects.userCoinId.startsWith('PASTE_YOUR')) {
-          console.error('Error: Placeholder Object IDs detected. Please edit index.ts and replace the PASTE_YOUR... placeholders with actual Testnet Object IDs.');
+      if (!sharedObjects.treasuryCapId) {
+          console.error('Error: Treasury Cap ID not found. Please verify the test configuration.');
           process.exit(1);
       }
-      
-      // Optionally, add a check here to verify the objects exist on Testnet
-      // using client.getObject({ id: sharedObjects.treasuryCapId, options: { showType: true } }) etc.
-      // This would confirm the IDs are valid before running tests.
 
     } else if (MOCK_MODE) {
         console.log('\nUsing mock object IDs for MOCK mode.');

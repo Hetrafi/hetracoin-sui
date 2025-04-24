@@ -19,6 +19,7 @@ build/
 # Deployment files with sensitive info
 deployment-*.json
 initialization-*.json
+*.json
 
 # Private keys and mnemonics
 *.key
