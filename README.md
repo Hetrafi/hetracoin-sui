@@ -14,6 +14,16 @@ HetraCoin provides a robust, secure token infrastructure with multiple integrate
 - **LiquidityPool:** Decentralized token exchange functionality
 - **Proposal:** On-chain governance voting mechanism
 
+## Essential Modules for Token Listing
+
+For token listing purposes, only a subset of modules is initially required:
+
+- **HetraCoin:** Essential for the token itself and admin management
+- **Governance:** Required for token administration, minting and burning
+- **Treasury:** For secure fund management
+
+The remaining modules (Staking, Proposal, Escrow, LiquidityPool, Hetrafi) will be deployed later as the platform develops. This phased approach allows for focused security auditing on the core token functionality first.
+
 ## Security Features
 
 HetraCoin implements multiple layers of security:

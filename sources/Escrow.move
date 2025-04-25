@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Escrow module - Locks wagered HetraCoin and securely releases to the winner
-#[allow(duplicate_alias)]
+#[allow(duplicate_alias, unused_use)]
 module hetracoin::Escrow {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};
     use sui::event;
+    use hetracoin::Treasury;
 
     // Status constants
     const STATUS_ACTIVE: u8 = 0;
@@ -21,6 +22,7 @@ module hetracoin::Escrow {
     const E_REENTRANCY: u64 = 3;
     const E_DISPUTE_RATE_LIMIT: u64 = 8;
     const E_ALREADY_RESOLVED: u64 = 11;
+    const E_NOT_TREASURY_ARBITRATOR: u64 = 12;
 
     // Wager escrow object
     public struct WagerEscrow has key, store {
@@ -35,7 +37,8 @@ module hetracoin::Escrow {
         last_dispute_time: u64,
         is_disputed: bool,
         resolution_notes: vector<u8>,
-        resolved_by: address
+        resolved_by: address,
+        treasury_arbitrator: address  // Treasury admin address as the designated arbitrator
     }
 
     // Event for tracking wager outcomes
@@ -51,15 +54,29 @@ module hetracoin::Escrow {
         wager_id: address,
         resolved_by: address,
         verdict: u8,
-        timestamp: u64
+        timestamp: u64,
+        is_treasury_arbitrated: bool  // Flag indicating if resolved by Treasury
     }
 
-    // Create and lock a new wager
+    // Backward-compatible version of lock_wager that defaults treasury_arbitrator to resolver
     public fun lock_wager(
         player_one: address,
         player_two: address,
         amount: u64,
         resolver: address,
+        ctx: &mut TxContext
+    ): WagerEscrow {
+        // By default, set the resolver as the treasury arbitrator for backward compatibility
+        lock_wager_with_arbitrator(player_one, player_two, amount, resolver, resolver, ctx)
+    }
+
+    // Create and lock a new wager with explicit treasury arbitrator
+    public fun lock_wager_with_arbitrator(
+        player_one: address,
+        player_two: address,
+        amount: u64,
+        resolver: address,
+        treasury_arbitrator: address,
         ctx: &mut TxContext
     ): WagerEscrow {
         WagerEscrow {
@@ -74,7 +91,8 @@ module hetracoin::Escrow {
             last_dispute_time: 0,
             is_disputed: false,
             resolution_notes: vector::empty<u8>(),
-            resolved_by: @0x0
+            resolved_by: @0x0,
+            treasury_arbitrator
         }
     }
 
@@ -192,7 +210,7 @@ module hetracoin::Escrow {
         wager.in_execution = false;
     }
 
-    // Admin resolution of disputes
+    // Admin resolution of disputes - Now includes Treasury arbitration
     public fun resolve_dispute(
         admin: address,
         wager: &mut WagerEscrow,
@@ -206,8 +224,14 @@ module hetracoin::Escrow {
         // Set the guard
         wager.in_execution = true;
         
-        // Only resolver can resolve disputes
-        assert!(admin == wager.resolver, E_NOT_AUTHORIZED);
+        // Determine if this is a Treasury-based arbitration
+        let is_treasury_arbitration = admin == wager.treasury_arbitrator;
+        
+        // Either the designated resolver or the treasury arbitrator can resolve disputes
+        assert!(
+            admin == wager.resolver || is_treasury_arbitration,
+            E_NOT_AUTHORIZED
+        );
         
         // Ensure wager is in disputed status
         assert!(wager.status == STATUS_DISPUTED, E_INVALID_STATUS);
@@ -228,16 +252,32 @@ module hetracoin::Escrow {
             wager.is_disputed = false;
         };
         
-        // Emit resolution event
+        // Emit resolution event with treasury arbitration flag
         event::emit(DisputeResolutionEvent {
             wager_id: object::uid_to_address(&wager.id),
             resolved_by: admin,
             verdict: if (approved) 1 else 0,
-            timestamp: tx_context::epoch(ctx)
+            timestamp: tx_context::epoch(ctx),
+            is_treasury_arbitrated: is_treasury_arbitration
         });
         
         // Reset the guard
         wager.in_execution = false;
+    }
+    
+    // Force resolution by Treasury (ultimate arbitration authority)
+    public fun treasury_arbitrate(
+        treasury_admin: address,
+        wager: &mut WagerEscrow,
+        approved: bool,
+        notes: vector<u8>,
+        ctx: &mut TxContext
+    ) {
+        // Check that caller is the designated treasury arbitrator
+        assert!(treasury_admin == wager.treasury_arbitrator, E_NOT_TREASURY_ARBITRATOR);
+        
+        // Use the standard resolution flow but with treasury authority
+        resolve_dispute(treasury_admin, wager, approved, notes, ctx)
     }
     
     // Add accessor for dispute status
@@ -248,5 +288,10 @@ module hetracoin::Escrow {
     // Add function to get resolution notes
     public fun get_resolution_notes(wager: &WagerEscrow): vector<u8> {
         wager.resolution_notes
+    }
+    
+    // Add function to get treasury arbitrator
+    public fun get_treasury_arbitrator(wager: &WagerEscrow): address {
+        wager.treasury_arbitrator
     }
 }

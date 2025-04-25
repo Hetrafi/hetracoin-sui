@@ -17,6 +17,29 @@ HetraCoin consists of several interconnected modules:
 - **Proposal Module**: On-chain governance system
 - **Hetrafi Module**: External integration endpoints
 
+## Deployment Phases and Audit Focus
+
+HetraCoin is designed to be deployed in phases, with different modules being activated at different stages:
+
+### Phase 1: Token Listing (Current Focus)
+
+The initial phase focuses on token listing which requires only the following core modules:
+
+1. **HetraCoin Module** (Essential): Defines the token itself with emergency pause capability
+2. **Governance Module** (Essential): Controls token administration, minting and burning
+3. **Treasury Module** (Strongly Recommended): Provides secure fund management with timelock
+
+For the initial security audit, we recommend focusing primarily on these three modules as they constitute the minimal set required for token listing. This focused approach ensures the core token functionality receives thorough scrutiny before additional features are deployed.
+
+### Phase 2: Platform Integration (Future)
+
+The remaining modules will be deployed as the platform develops:
+- Staking Module
+- Proposal Module
+- Escrow Module
+- LiquidityPool Module
+- Hetrafi Module
+
 ## Security Model
 
 HetraCoin implements a comprehensive security model:
@@ -139,6 +162,7 @@ Before starting the audit, we've ensured:
 The test suite can be run with:
 
 ```
+sui move build
 sui move test
 ```
 
