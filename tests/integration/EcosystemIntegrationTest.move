@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Comprehensive integration test for the HetraCoin ecosystem
-#[allow(duplicate_alias)]
+#[allow(duplicate_alias, unused_use)]
 module hetracoin_integration::EcosystemIntegrationTest {
-    use sui::test_scenario;
+    use sui::test_scenario::{Self as ts};
     use sui::coin::{Self, TreasuryCap};
     use sui::transfer;
-    use hetracoin::HetraCoin::{Self, HETRACOIN};
+    use hetracoin::HetraCoin::{Self, HETRACOIN, AdminRegistry, EmergencyPauseState};
     use hetracoin::Governance;
     use hetracoin::Treasury;
     use hetracoin::Hetrafi;
@@ -16,73 +16,92 @@ module hetracoin_integration::EcosystemIntegrationTest {
     use hetracoin::Proposal;
 
     #[test]
-    public fun test_full_ecosystem_integration() {
+    public fun test_ecosystem_integration() {
         let admin = @0xA;
         let user1 = @0xB;
         let user2 = @0xC;
         let treasury_addr = @0xD;
         
-        let mut scenario_val = test_scenario::begin(admin);
+        let mut scenario_val = ts::begin(admin);
         let scenario = &mut scenario_val;
         
         // Initialize coin
-        test_scenario::next_tx(scenario, admin);
+        ts::next_tx(scenario, admin);
         {
-            let ctx = test_scenario::ctx(scenario);
+            let ctx = ts::ctx(scenario);
             let witness = HetraCoin::create_witness_for_testing();
             HetraCoin::init_for_testing(witness, ctx);
         };
         
-        // Create Treasury
-        test_scenario::next_tx(scenario, admin);
+        // Create AdminRegistry
+        ts::next_tx(scenario, admin);
         {
-            let ctx = test_scenario::ctx(scenario);
+            let ctx = ts::ctx(scenario);
+            let admin_registry = HetraCoin::create_admin_registry_for_testing(admin, ctx);
+            transfer::public_share_object(admin_registry);
+        };
+        
+        // Create EmergencyPauseState
+        ts::next_tx(scenario, admin);
+        {
+            let ctx = ts::ctx(scenario);
+            HetraCoin::create_pause_state_for_testing(ctx);
+        };
+        
+        // Create Treasury
+        ts::next_tx(scenario, admin);
+        {
+            let ctx = ts::ctx(scenario);
             let treasury = Treasury::create_treasury(treasury_addr, ctx);
             transfer::public_transfer(treasury, treasury_addr);
         };
         
         // Create Hetrafi marketplace
-        test_scenario::next_tx(scenario, admin);
+        ts::next_tx(scenario, admin);
         {
-            let ctx = test_scenario::ctx(scenario);
-            Hetrafi::create(treasury_addr, ctx);
+            let ctx = ts::ctx(scenario);
+            Hetrafi::create(admin, ctx);
         };
         
         // Create staking pool
-        test_scenario::next_tx(scenario, admin);
+        ts::next_tx(scenario, admin);
         {
-            let ctx = test_scenario::ctx(scenario);
+            let ctx = ts::ctx(scenario);
             Staking::create_staking_pool(500, 30, ctx); // 5% APY, 30 day min lock
         };
         
         // Create governance system
-        test_scenario::next_tx(scenario, admin);
+        ts::next_tx(scenario, admin);
         {
-            let ctx = test_scenario::ctx(scenario);
+            let ctx = ts::ctx(scenario);
             Proposal::create_governance_system(1000, 7, 2, ctx);
         };
         
         // Mint coins for users
-        test_scenario::next_tx(scenario, admin);
+        ts::next_tx(scenario, admin);
         {
-            let mut treasury_cap = test_scenario::take_from_sender<TreasuryCap<HETRACOIN>>(scenario);
-            let ctx = test_scenario::ctx(scenario);
+            let mut treasury_cap = ts::take_from_sender<TreasuryCap<HETRACOIN>>(scenario);
+            let admin_registry = ts::take_shared<AdminRegistry>(scenario);
+            let pause_state = ts::take_shared<EmergencyPauseState>(scenario);
+            let ctx = ts::ctx(scenario);
             
-            let user1_coins = Governance::mint(&mut treasury_cap, 5000, ctx);
-            let user2_coins = Governance::mint(&mut treasury_cap, 3000, ctx);
+            let user1_coins = Governance::mint(&mut treasury_cap, &admin_registry, &pause_state, 5000, ctx);
+            let user2_coins = Governance::mint(&mut treasury_cap, &admin_registry, &pause_state, 3000, ctx);
             
             transfer::public_transfer(user1_coins, user1);
             transfer::public_transfer(user2_coins, user2);
             
-            test_scenario::return_to_sender(scenario, treasury_cap);
+            ts::return_to_sender(scenario, treasury_cap);
+            ts::return_shared(admin_registry);
+            ts::return_shared(pause_state);
         };
         
         // User1 stakes coins
-        test_scenario::next_tx(scenario, user1);
+        ts::next_tx(scenario, user1);
         {
-            let mut pool = test_scenario::take_shared<Staking::StakingPool>(scenario);
-            let mut coins = test_scenario::take_from_sender<coin::Coin<HETRACOIN>>(scenario);
-            let ctx = test_scenario::ctx(scenario);
+            let mut pool = ts::take_shared<Staking::StakingPool>(scenario);
+            let mut coins = ts::take_from_sender<coin::Coin<HETRACOIN>>(scenario);
+            let ctx = ts::ctx(scenario);
             
             // Split coins - 2000 for staking, 3000 remains
             let staking_coins = coin::split(&mut coins, 2000, ctx);
@@ -92,13 +111,13 @@ module hetracoin_integration::EcosystemIntegrationTest {
             
             // Return remaining coins
             transfer::public_transfer(coins, user1);
-            test_scenario::return_shared(pool);
+            ts::return_shared(pool);
         };
         
         // User2 creates a wager with User1
-        test_scenario::next_tx(scenario, user2);
+        ts::next_tx(scenario, user2);
         {
-            let ctx = test_scenario::ctx(scenario);
+            let ctx = ts::ctx(scenario);
             
             // Create wager for 1000 coins
             let wager = Escrow::lock_wager(user2, user1, 1000, admin, ctx);
@@ -108,10 +127,10 @@ module hetracoin_integration::EcosystemIntegrationTest {
         };
         
         // User1 makes a purchase through Hetrafi
-        test_scenario::next_tx(scenario, user1);
+        ts::next_tx(scenario, user1);
         {
-            let mut hetrafi = test_scenario::take_shared<Hetrafi::Hetrafi>(scenario);
-            let ctx = test_scenario::ctx(scenario);
+            let mut hetrafi = ts::take_shared<Hetrafi::Hetrafi>(scenario);
+            let ctx = ts::ctx(scenario);
             
             // Create purchase coins
             let purchase_coins = coin::mint_for_testing<HETRACOIN>(1000, ctx);
@@ -123,34 +142,34 @@ module hetracoin_integration::EcosystemIntegrationTest {
             transfer::public_transfer(payment, user2);
             transfer::public_transfer(fee, treasury_addr);
             
-            test_scenario::return_shared(hetrafi);
+            ts::return_shared(hetrafi);
         };
         
         // Admin resolves the wager
-        test_scenario::next_tx(scenario, admin);
+        ts::next_tx(scenario, admin);
         {
-            let mut wager = test_scenario::take_from_sender<Escrow::WagerEscrow>(scenario);
-            let ctx = test_scenario::ctx(scenario);
+            let mut wager = ts::take_from_sender<Escrow::WagerEscrow>(scenario);
+            let ctx = ts::ctx(scenario);
             
             // Resolve in favor of user1
             Escrow::release_wager(admin, &mut wager, user1, ctx);
             
-            test_scenario::return_to_sender(scenario, wager);
+            ts::return_to_sender(scenario, wager);
         };
         
         // Treasury receives the fee
-        test_scenario::next_tx(scenario, treasury_addr);
+        ts::next_tx(scenario, treasury_addr);
         {
-            let mut treasury = test_scenario::take_from_sender<Treasury::Treasury>(scenario);
-            let fee_coin = test_scenario::take_from_sender<coin::Coin<HETRACOIN>>(scenario);
-            let ctx = test_scenario::ctx(scenario);
+            let mut treasury = ts::take_from_sender<Treasury::Treasury>(scenario);
+            let fee_coin = ts::take_from_sender<coin::Coin<HETRACOIN>>(scenario);
+            let ctx = ts::ctx(scenario);
             
             // Deposit fee into treasury
             Treasury::deposit(&mut treasury, fee_coin, ctx);
             
-            test_scenario::return_to_sender(scenario, treasury);
+            ts::return_to_sender(scenario, treasury);
         };
         
-        test_scenario::end(scenario_val);
+        ts::end(scenario_val);
     }
 } 

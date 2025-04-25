@@ -16,6 +16,10 @@ module hetracoin::Staking {
     const E_INSUFFICIENT_STAKE: u64 = 1;
     const E_STAKE_LOCKED: u64 = 2;
     const E_NOT_OWNER: u64 = 3;
+    const E_ARITHMETIC_OVERFLOW: u64 = 105;
+    
+    // Add the missing constant
+    const MAX_U64: u64 = 18446744073709551615; // Maximum u64 value
     
     // Staking pool shared object
     public struct StakingPool has key {
@@ -100,18 +104,23 @@ module hetracoin::Staking {
         transfer::transfer(stake, tx_context::sender(ctx));
     }
     
-    // Calculate rewards
-    public fun calculate_rewards(
-        pool: &StakingPool,
-        stake: &Stake,
-        current_time: u64
-    ): u64 {
-        let stake_amount = balance::value(&stake.amount);
-        let days_staked = current_time - stake.last_reward_claim;
+    // Safe addition function
+    #[allow(unused_function)]
+    fun safe_add(a: u64, b: u64): u64 {
+        assert!(a <= MAX_U64 - b, E_ARITHMETIC_OVERFLOW);
+        a + b
+    }
+    
+    // Safe multiplication with scaling for reward calculation
+    fun calculate_rewards(stake_amount: u64, rate: u64, duration: u64): u64 {
+        // Use a higher precision calculation to prevent loss
+        // Rate is expressed as basis points (e.g., 500 = 5%)
+        let scaled_amount = (stake_amount as u128) * (rate as u128) * (duration as u128);
+        let result = scaled_amount / 10000 / 100; // De-scale from basis points
         
-        // Calculate rewards: amount * rate * days / 10000 (basis points)
-        // This is a simplified calculation
-        (stake_amount * pool.reward_rate * days_staked) / 10000
+        // Ensure we don't overflow u64
+        assert!(result <= (MAX_U64 as u128), E_ARITHMETIC_OVERFLOW);
+        (result as u64)
     }
     
     // Claim rewards
@@ -128,7 +137,7 @@ module hetracoin::Staking {
         
         // Calculate rewards
         let current_time = tx_context::epoch_timestamp_ms(ctx) / 86400000;
-        let reward_amount = calculate_rewards(pool, stake, current_time);
+        let reward_amount = calculate_rewards(balance::value(&stake.amount), pool.reward_rate, current_time - stake.last_reward_claim);
         
         // Update last claim time
         stake.last_reward_claim = current_time;
@@ -191,7 +200,7 @@ module hetracoin::Staking {
         result_coin
     }
     
-    // Getters
+    // Getters for production use
     public fun get_stake_amount(stake: &Stake): u64 {
         balance::value(&stake.amount)
     }
@@ -253,5 +262,23 @@ module hetracoin::Staking {
             lock_period: 0,
             last_reward_claim: 0,
         }
+    }
+    
+    // Add these test helpers at the end of the file
+    #[test_only]
+    /// Get the stake start time (for testing)
+    public fun get_stake_start_time(stake: &Stake): u64 {
+        stake.staked_at
+    }
+    
+    #[test_only]
+    /// Create a test staking pool
+    public fun create_test_pool(
+        reward_rate: u64,
+        min_lock_period: u64,
+        ctx: &mut TxContext
+    ) {
+        // Just call the regular create function
+        create_staking_pool(reward_rate, min_lock_period, ctx)
     }
 } 

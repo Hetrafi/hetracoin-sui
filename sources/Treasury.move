@@ -7,14 +7,16 @@ module hetracoin::Treasury {
     use sui::object::{Self, UID};
     use sui::tx_context::{Self, TxContext};
     use sui::event;
-    use sui::coin::{Self, Coin};
+    use sui::coin::{Self, Coin, TreasuryCap};
     use sui::balance::{Self, Balance};
-    use hetracoin::HetraCoin::HETRACOIN;
+    use hetracoin::HetraCoin::{Self, HETRACOIN};
+    use sui::transfer;
 
     // Error codes
     const E_NOT_AUTHORIZED: u64 = 1;
     const E_INSUFFICIENT_FUNDS: u64 = 2;
     const E_REENTRANCY: u64 = 3;
+    const E_TIMELOCK_NOT_EXPIRED: u64 = 4;
 
     // Treasury struct storing funds
     public struct Treasury has key, store {
@@ -35,6 +37,21 @@ module hetracoin::Treasury {
         recipient: address,
         amount: u64,
         timestamp: u64
+    }
+
+    // Add timelock functionality
+    public struct WithdrawalRequest has key, store {
+        id: UID,
+        amount: u64,
+        recipient: address,
+        expiration_epoch: u64
+    }
+
+    // Define the missing event
+    public struct WithdrawalRequestedEvent has copy, drop {
+        amount: u64,
+        recipient: address,
+        expiration_epoch: u64
     }
 
     // Create a new treasury
@@ -110,5 +127,106 @@ module hetracoin::Treasury {
     // Get the current treasury balance
     public fun get_balance(treasury: &Treasury): u64 {
         balance::value(&treasury.funds)
+    }
+
+    // Two-step withdrawal with timelock
+    public entry fun request_withdrawal(
+        treasury: &mut Treasury, 
+        amount: u64, 
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        // Authorization check
+        assert!(tx_context::sender(ctx) == treasury.admin, E_NOT_AUTHORIZED);
+        
+        // Create withdrawal request with 1-hour timelock
+        let expiration = tx_context::epoch(ctx) + 60; // ~1 hour at 1 min epochs
+        let request = WithdrawalRequest {
+            id: object::new(ctx),
+            amount,
+            recipient,
+            expiration_epoch: expiration
+        };
+        
+        // Transfer request to admin
+        transfer::transfer(request, tx_context::sender(ctx));
+        
+        // Emit event for transparency
+        event::emit(WithdrawalRequestedEvent { 
+            amount,
+            recipient,
+            expiration_epoch: expiration
+        });
+    }
+
+    // Execute after timelock expires
+    public entry fun execute_withdrawal(
+        treasury: &mut Treasury,
+        request: WithdrawalRequest,
+        ctx: &mut TxContext
+    ) {
+        // Verify timelock has passed
+        assert!(tx_context::epoch(ctx) >= request.expiration_epoch, E_TIMELOCK_NOT_EXPIRED);
+        
+        // Execute withdrawal logic
+        withdraw(treasury, request.amount, ctx);
+        
+        // Destroy the request
+        let WithdrawalRequest { id, amount: _, recipient: _, expiration_epoch: _ } = request;
+        object::delete(id);
+    }
+
+    // ========== TEST HELPERS ==========
+    #[test_only]
+    /// Helper for tests: Create a WithdrawalRequest directly
+    public fun create_test_withdrawal_request(
+        amount: u64,
+        recipient: address,
+        expiration_epoch: u64,
+        ctx: &mut TxContext
+    ): WithdrawalRequest {
+        WithdrawalRequest {
+            id: object::new(ctx),
+            amount,
+            recipient,
+            expiration_epoch
+        }
+    }
+
+    #[test_only]
+    /// Accessor for WithdrawalRequest amount field (for testing)
+    public fun get_withdrawal_request_amount(request: &WithdrawalRequest): u64 {
+        request.amount
+    }
+
+    #[test_only]
+    /// Accessor for WithdrawalRequest recipient field (for testing)
+    public fun get_withdrawal_request_recipient(request: &WithdrawalRequest): address {
+        request.recipient
+    }
+
+    #[test_only]
+    /// Accessor for WithdrawalRequest expiration field (for testing)
+    public fun get_withdrawal_request_expiration(request: &WithdrawalRequest): u64 {
+        request.expiration_epoch
+    }
+
+    #[test_only]
+    /// Mock the timelock for testing by setting a specific expiration
+    public fun set_withdrawal_request_expiration_for_testing(request: &mut WithdrawalRequest, expiration: u64) {
+        request.expiration_epoch = expiration;
+    }
+
+    #[test_only]
+    /// Create a test treasury with initial funds
+    public fun create_test_treasury_with_funds(
+        admin: address,
+        initial_funds: Coin<HETRACOIN>,
+        ctx: &mut TxContext
+    ): Treasury {
+        let mut treasury = create_treasury(admin, ctx);
+        let funds = coin::into_balance(initial_funds);
+        balance::join(&mut treasury.funds, funds);
+        treasury
     }
 }

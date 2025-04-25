@@ -1,169 +1,127 @@
-# HetraCoin Smart Contract Ecosystem
+# HetraCoin - Sui Blockchain Token Ecosystem
+
+HetraCoin is a comprehensive token ecosystem built on the Sui blockchain using the Move programming language, designed with security and scalability as its primary focus.
 
 ## Overview
-HetraCoin is a comprehensive decentralized cryptocurrency ecosystem built on the Sui blockchain, designed specifically to support and enhance the gaming marketplace Hetrafi [https://hetrafi.com]. The ecosystem integrates advanced smart contract modules including governance, escrow services, liquidity pools, staking rewards, and treasury management, ensuring secure, efficient, and transparent financial operations.
 
-We hope that HetraCoin will bring Hetrafi into the new era of decentralized gaming, offering users the opportunity to earn money by playing their favourite games!
+HetraCoin provides a robust, secure token infrastructure with multiple integrated components:
 
-For more information, please visit our website: [https://hetracoin.io]
+- **HetraCoin:** Core token implementation with dynamic admin management
+- **Governance:** Secure administration and token supply management
+- **Treasury:** Timelock-protected fund management
+- **Escrow:** Secure peer-to-peer transactions with dispute resolution
+- **Staking:** Token staking system with rewards
+- **LiquidityPool:** Decentralized token exchange functionality
+- **Proposal:** On-chain governance voting mechanism
 
-## How Hetrafi.move Works with HetraCoin
-The Hetrafi.move module serves as the marketplace infrastructure for the HetraCoin ecosystem. Here's how it works:
+## Security Features
 
-### 1. Fee Collection Mechanism: 
-The transfer_with_fee function automatically deducts a 5% fee from every transaction on the Hetrafi marketplace. This is implemented by splitting the input coin into two parts: 95% for the recipient and 5% for the platform treasury.
+HetraCoin implements multiple layers of security:
 
-### 2. Treasury Integration: 
-Fees collected are directed to a designated treasury address, which is stored in the Hetrafi shared object. This ensures all marketplace revenue is properly accounted for and managed.
+- **Capability-based security model:** Access control through capability objects
+- **Emergency pause mechanism:** Admin-controlled system pause for incident response
+- **Two-phase admin transfers:** Requiring explicit acceptance by the new admin
+- **Treasury timelock:** Enforced delay period for treasury withdrawals
+- **Admin registry:** Single source of truth for current admin validation
+- **Event transparency:** Comprehensive event emission for all critical operations
 
-### 3. Simple Developer Interface: 
-Game developers only need to call a single function to handle payments, with fee calculation and distribution handled automatically.
+## Project Structure
 
-### 4. Transparency: 
-All fee calculations are performed on-chain with a fixed percentage, ensuring users always know exactly what fees they're paying.
+```
+sources/
+  ├── HetraCoin.move      # Core token implementation
+  ├── Governance.move     # Admin and mint/burn security
+  ├── Treasury.move       # Fund management with timelock
+  ├── Escrow.move         # P2P transaction security
+  ├── Staking.move        # Token staking functionality
+  ├── LiquidityPool.move  # Exchange functionality
+  ├── Proposal.move       # Governance voting
+  ├── Hetrafi.move        # Ecosystem integration
+  └── docs/               # Documentation
+      └── audit-readiness.md  # Audit preparation guide
+tests/
+  ├── unit/               # Unit tests
+  └── integration/        # Integration tests
+```
 
-## HetraCoin Concept and Tokenomics
-HetraCoin (HETRA) is designed as the native currency for the Hetrafi gaming marketplace with several key features:
+## Audit Readiness
 
-### 1. Token Utility:
-- Payment for games and in-game items on Hetrafi
-- Staking for passive income
-- Liquidity provision rewards
-- Governance participation
-- Wager currency for peer-to-peer gaming competitions
+HetraCoin has been designed with audit readiness in mind:
 
-### 2. Token Economics:
-- Fixed maximum supply of 1 trillion tokens (prevents inflation)
-- 9 decimal places for microtransactions
-- Controlled minting through governance
-- Fee recycling through treasury (5% marketplace fee)
+### Security Audit Preparation
 
-### 3. Value Accrual Mechanisms:
-- Marketplace fees create buy pressure as the platform grows
-- Staking locks tokens, reducing circulating supply
-- Governance voting requires token holdings
-- Liquidity pools facilitate trading while earning providers fees
+We've implemented best practices from the Move and Sui ecosystems to prepare for professional security audits:
 
-### 4. Token Distribution and Sale:
-- Initial token sale to fund development
-- Strategic partner allocations
-- Team allocation with vesting
-- Community rewards and airdrops
-- Treasury allocation for ongoing development
+1. **Comprehensive Documentation**
+   - Detailed module-level documentation
+   - Security model explanation
+   - Privilege flow documentation
+   - Event schema documentation
 
-### 5. Integration with Gaming Ecosystem:
-- Players earn tokens by playing games
-- Tournament prizes paid in HETRA
-- Special items/NFTs purchasable only with HETRA
+2. **Defense-in-Depth Strategy**
+   - Multi-layered security controls
+   - Capability-based authorization
+   - Runtime assertions for invariants
+   - Proper error handling with descriptive codes
 
-The HetraCoin ecosystem creates a circular economy where:
-- Players purchase HETRA to use on the Hetrafi marketplace
-- 5% of transactions go to treasury
-- Treasury funds development, costs and staking rewards
-- Developers and players earn HETRA
-- Value increases as ecosystem usage grows
+3. **Testing Framework**
+   - Unit tests for isolated functionality
+   - Integration tests for module interactions
+   - Security-focused tests for edge cases
+   - Formal validation of critical properties
 
-This creates a sustainable economic model where all participants benefit from the growth of the platform, with built-in mechanisms to maintain token value through controlled supply and continuous utility.
+4. **Security Features**
+   - Emergency pause mechanism
+   - Event transparency for monitoring
+   - Timelock protections for high-value operations
+   - Strict validation of user inputs
 
-## Modules & Functionality
+5. **Audit-Specific Documentation**
+   - See `sources/docs/audit-readiness.md` for a comprehensive guide for auditors
+   - Known limitations and future roadmap
+   - Critical security areas with risk evaluation
+   - Suggested audit focus areas
 
-### 1. HetraCoin Token (HetraCoin.move)
-- Defines the primary cryptocurrency (HETRA) with 9 decimal places
-- Implements secure token transfers with integrated event logging
-- Handles minting with strict governance controls
-- Includes zero-amount transfer protection and overflow checks
-- Emits transparent on-chain events for all transfers
+### Critical Components
 
-### 2. Governance Module (Governance.move)
-- Enables token holders to participate in decision-making
-- Provides secure minting and burning controls accessible only to authorized administrators
-- Includes a two-step governance transfer process requiring explicit acceptance
-- Enforces maximum minting limits (1 billion HETRA per transaction)
-- Implements time-based expiration for governance transfer requests
+The following areas deserve particular attention during security review:
 
-### 3. Escrow Service (Escrow.move)
-- Facilitates secure peer-to-peer wagers between players
-- Incorporates reentrancy protection and rate-limiting for disputes to mitigate spam and security vulnerabilities
-- Supports dispute resolution by authorized resolvers, maintaining fair outcomes
-- Implements a 24-hour cooldown period between disputes to prevent abuse
-- Tracks wager status (active, completed, cancelled) with appropriate event emissions
+- Admin capability management (`HetraCoin.move` and `Governance.move`)
+- Token minting/burning authorization (`Governance.move`) 
+- Treasury fund security (`Treasury.move`)
+- Emergency pause functionality (`HetraCoin.move`)
+- Reentrancy protection in fund handling (`LiquidityPool.move`)
 
-### 4. Liquidity Pool (LiquidityPool.move)
-- Maintains liquidity on decentralized exchanges, stabilizing token price and trading
-- Designed to handle high-volume transactions with minimal volatility
-- Implements constant product formula (x * y = k) for price determination
-- Features optimized fee handling with accumulation and batch processing
-- Supports swapping between HETRA and SUI with configurable slippage protection
+## Development
 
-### 5. Hetrafi Marketplace (Hetrafi.move)
-- Handles automatic 5% fee deduction for all marketplace transactions
-- Directs fees to a designated treasury address for platform sustainability
-- Provides a simple interface for game developers to integrate with the platform
-- Ensures transparent fee collection with clear documentation
-- Designed for high throughput to support busy gaming marketplaces
+### Prerequisites
 
-### 6. Staking Module (Staking.move)
-- Allows token holders to stake HETRA and earn rewards
-- Implements configurable reward rates and minimum lock periods
-- Features batch processing optimized for scalability and gas efficiency
-- Tracks individual stakes with ownership verification
-- Emits events for stake creation, reward claims, and withdrawals
+- Sui CLI (version 1.0.0 or higher)
+- Move language extension for your editor
 
-### 7. Treasury Management (Treasury.move)
-- Manages funds for ongoing operations, growth, and development
-- Implements transparency in fund management through event logging
-- Restricts withdrawals to authorized administrators only
-- Tracks all deposits and withdrawals with timestamp information
-- Prevents over-withdrawals with balance verification
+### Building
 
-## Security and Testing
-
-### Key Management
-- Never commit private keys or mnemonics to the repository
-- Store private keys in the `.env` file which is gitignored
-- For development, use different keys than production
-- The `sui keytool` can be used to generate new keys when needed
-
-### Deployment
-- Always test on testnet before deploying to mainnet
-- Verify deployments using the verification script
-- Keep deployment artifacts (deployment-*.json files) private as they may contain sensitive information
-
-### Access Control
-- The treasury and admin addresses will be secure multisig wallets for production
-- Keys rotated periodically for enhanced security
-- Different keys for different environments (testnet/mainnet)
+```
+sui move build
+```
 
 ### Testing
-- Comprehensive integration and unit testing
-- Robust security measures such as reentrancy guards, governance restrictions, and rate-limiting for dispute management
-- Zero-amount transfer protection to prevent transaction spam
-- Overflow checks to ensure mathematical safety
-- Two-step governance transfer process to prevent accidental privilege escalation
 
-## Future Enhancements
-- Optimization for high-volume staking reward distributions.
-- Integration with Hetrafi's game marketplace for seamless token usage.
-- Additional security measures and audits to ensure robustness.
-- Community-driven governance and feature suggestions.
+```
+sui move test
+```
 
 ## License
 
-This project is licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-
-See the LICENSE file in the repository for the full license text.
+This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
 
 ## Contact
-For any questions or feedback, please contact us at [contact@hetracoin.io].
+
+For security-related inquiries: security@hetrafi.com
+For general development questions: dev@hetrafi.com
+
+---
+
+*HetraCoin is currently in development and not yet ready for production use.*
 
 

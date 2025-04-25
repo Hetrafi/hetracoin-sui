@@ -23,6 +23,7 @@ module hetracoin::LiquidityPool {
     const E_INSUFFICIENT_OUTPUT: u64 = 2;
     const E_ZERO_AMOUNT: u64 = 3;
     const E_SLIPPAGE_EXCEEDED: u64 = 4;
+    const E_REENTRANCY: u64 = 100;
 
     // Constants for precision in calculations
     const RATE_PRECISION: u64 = 1000000; // 6 decimal places
@@ -40,7 +41,8 @@ module hetracoin::LiquidityPool {
         accumulated_fees_b: u64,  // Accumulated fees for token B
         fee_processing_threshold: u64,  // Threshold for processing fees
         last_fee_processing_time: u64,  // Last time fees were processed
-        admin: address
+        admin: address,
+        locked: bool
     }
 
     // LP token
@@ -92,7 +94,8 @@ module hetracoin::LiquidityPool {
             accumulated_fees_b: 0,
             fee_processing_threshold: 10000, // Process after accumulating 10000 tokens
             last_fee_processing_time: tx_context::epoch_timestamp_ms(ctx),
-            admin: tx_context::sender(ctx)
+            admin: tx_context::sender(ctx),
+            locked: false
         };
         
         transfer::share_object(pool);
@@ -290,5 +293,70 @@ module hetracoin::LiquidityPool {
         });
         
         sui_out_coin
+    }
+
+    // Replace the lambda-based reentrancy guard with a direct approach
+    #[allow(unused_field)]
+    public struct PoolState has store {
+        locked: bool,
+        // ... other pool state
+    }
+
+    // Use a direct method instead of lambdas
+    public entry fun swap(
+        pool: &mut LiquidityPool,
+        sui_in: Coin<SUI>,
+        min_token_out: u64,
+        ctx: &mut TxContext
+    ) {
+        // Check for reentrancy
+        assert!(!pool.locked, E_REENTRANCY);
+        
+        // Set the guard
+        pool.locked = true;
+        
+        // Perform swap operation
+        // First update all state
+        
+        // Example: Call swap implementation
+        let token_out = swap_sui_for_token(pool, sui_in, min_token_out, ctx);
+        transfer::public_transfer(token_out, tx_context::sender(ctx));
+        
+        // Clear the guard when done
+        pool.locked = false;
+    }
+
+    // Add the needed test helpers at the end of the file
+    #[test_only]
+    /// Create a new pool for testing
+    public fun create_test_pool(
+        hetra_coin: Coin<HETRACOIN>,
+        sui_coin: Coin<SUI>,
+        fee_percent: u64, 
+        ctx: &mut TxContext
+    ) {
+        // Just call the regular create_pool function
+        create_pool(hetra_coin, sui_coin, fee_percent, ctx);
+    }
+
+    #[test_only]
+    /// Get the total liquidity in the pool (for testing)
+    public fun get_total_liquidity_for_testing(pool: &LiquidityPool): u64 {
+        balance::value(&pool.token_a_reserve) + balance::value(&pool.token_b_reserve)
+    }
+
+    #[test_only]
+    /// Get the exchange rate for testing
+    public fun get_exchange_rate_for_testing(pool: &LiquidityPool, ctx: &TxContext): u64 {
+        // Simple rate calculation (actual rates may vary)
+        let hetra_amount = balance::value(&pool.token_a_reserve);
+        let sui_amount = balance::value(&pool.token_b_reserve);
+        
+        if (hetra_amount == 0 || sui_amount == 0) {
+            return 0
+        };
+        
+        // Simple exchange rate: sui/hetra
+        sui_amount * 1000000 / hetra_amount
     }
 } 
