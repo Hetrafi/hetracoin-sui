@@ -119,6 +119,9 @@ module hetracoin::HetraCoin {
         // Transfer the SetupCap to the publisher (needed to call setup_for_testnet)
         transfer::transfer(SetupCap { id: object::new(ctx) }, admin);
         // Witness is consumed by being passed into create_currency_internal
+        
+        // Initialize the pause state
+        init_pause_state(ctx);
     }
     
     /// Public entry function potentially used for post-publish setup.

@@ -635,39 +635,6 @@ function analyzeModuleSecurity(testResults: TestResult[]): SecurityFinding[] {
     }
   );
   
-  // Escrow module security analysis
-  findings.push(
-    {
-      module: 'Escrow',
-      aspect: 'dispute_resolution',
-      status: 'info',
-      description: 'The escrow system appears to have dispute resolution mechanisms',
-      recommendation: 'Ensure fair processes for dispute resolution with appropriate timeouts'
-    }
-  );
-  
-  // Proposal module security analysis
-  findings.push(
-    {
-      module: 'Proposal',
-      aspect: 'voting_integrity',
-      status: 'info',
-      description: 'Proposal voting should prevent double-voting and ensure proper vote counting',
-      recommendation: 'Implement comprehensive vote validation and ensure one-vote-per-token principle'
-    }
-  );
-  
-  // Hetrafi module security analysis
-  findings.push(
-    {
-      module: 'Hetrafi',
-      aspect: 'fee_calculation',
-      status: 'info',
-      description: 'Fee calculations should handle edge cases like zero values and prevent overcharging',
-      recommendation: 'Implement fee caps and ensure fair fee distribution'
-    }
-  );
-  
   // Add comprehensive code quality metrics
   addCodeQualityMetrics(findings);
   
