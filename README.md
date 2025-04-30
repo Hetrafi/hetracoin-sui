@@ -128,7 +128,7 @@ This project is licensed under the Apache License 2.0 - see the LICENSE file for
 ## Contact
 
 For security-related inquiries: security@hetrafi.com
-For general development questions: dev@hetrafi.com
+For general development questions: cavan@hetrafi.com
 
 ---
 
