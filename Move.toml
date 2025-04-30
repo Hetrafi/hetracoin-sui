@@ -8,8 +8,8 @@ edition = "2024"
 
 # Dependencies
 [dependencies]
-# TESTS PASSING WITH VERSION 1.44.3
-Sui = { local = "../sui/crates/sui-framework/packages/sui-framework" }
+# Using compatible version with local CLI 1.49.0
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
 
 # Address placeholders
 [addresses]

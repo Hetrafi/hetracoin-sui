@@ -1,7 +1,14 @@
 // Copyright 2025 Hetrafi Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-// Governance module - Manages HetraCoin minting and burning securely
+/// @title Governance Module
+/// @notice Manages HetraCoin minting, burning, and administrative functions
+/// @dev Implements governance functionality for the HETRA ecosystem:
+///      - Controlled token minting with maximum limits per transaction
+///      - Secure token burning with appropriate authorization checks
+///      - Two-step governance transfer process to prevent admin mistakes
+///      - Event emission for transparency and auditability
+///      - Capability-based authorization for enhanced security
 #[allow(duplicate_alias, unused_variable, unused_use)]
 module hetracoin::Governance {
     use sui::coin::{Self, TreasuryCap, Coin};
@@ -14,35 +21,56 @@ module hetracoin::Governance {
     #[test_only]
     use sui::test_scenario;
 
-    // Maximum minting limit per transaction
+    /// @notice Maximum tokens that can be minted in a single transaction
+    /// @dev Limits risk exposure from any single mint operation
     const MAX_MINT: u64 = 1_000_000_000; // 1 Billion HETRA max per mint
 
     // Error codes
+    /// @notice Error when caller is not authorized for an operation
     const E_NOT_AUTHORIZED: u64 = 1;
+    /// @notice Error when mint amount exceeds the per-transaction limit
     const E_EXCEEDS_MAX_MINT: u64 = 2;
+    /// @notice Error when trying to accept a transfer meant for another address
     const ENOT_RECIPIENT: u64 = 4;
+    /// @notice Error when a governance transfer request has expired
     const EREQUEST_EXPIRED: u64 = 5;
 
-    // Event for tracking minting
+    /// @notice Event emitted when new tokens are minted
+    /// @dev Used for tracking token supply increases
     public struct MintEvent has copy, drop {
+        /// @notice Address of the authorized minter
         minter: address,
+        /// @notice Amount of tokens minted
         amount: u64,
+        /// @notice Timestamp of the mint operation
         timestamp: u64
     }
 
-    // Event for tracking burning
+    /// @notice Event emitted when tokens are burned
+    /// @dev Used for tracking token supply decreases
     public struct BurnEvent has copy, drop {
+        /// @notice Address that initiated the burn
         burner: address,
+        /// @notice Amount of tokens burned
         amount: u64,
+        /// @notice Timestamp of the burn operation
         timestamp: u64
     }
 
-    // Add this capability for authorized governance
+    /// @notice Capability object that grants governance authority
+    /// @dev Used for capability-based authorization of governance actions
     public struct GovernanceCap has key, store {
         id: UID
     }
 
-    // Use capability-based authorization
+    /// @notice Changes the admin address in the HetraCoin module
+    /// @dev Requires both governance and admin capabilities for authorization
+    /// @param treasury_cap Treasury capability of the HETRA token
+    /// @param governance_cap Governance capability object
+    /// @param registry Admin registry to update
+    /// @param admin_cap Admin capability confirming authority
+    /// @param new_admin Address of the new administrator
+    /// @param ctx Transaction context for authorization
     public entry fun change_admin(
         treasury_cap: &mut TreasuryCap<HETRACOIN>,
         governance_cap: &GovernanceCap, 
@@ -59,7 +87,14 @@ module hetracoin::Governance {
         HetraCoin::change_admin(treasury_cap, admin_cap, registry, new_admin, ctx);
     }
 
-    // Mint new HetraCoin tokens (admin only)
+    /// @notice Mints new HetraCoin tokens with appropriate authorization
+    /// @dev Only callable by the current admin, respects maximum mint limits
+    /// @param treasury_cap Treasury capability for minting
+    /// @param registry Admin registry for authorization
+    /// @param pause_state Emergency pause state to prevent minting when paused
+    /// @param amount Amount of tokens to mint
+    /// @param ctx Transaction context for authorization and events
+    /// @return Newly minted HETRA tokens
     public fun mint(
         treasury_cap: &mut TreasuryCap<HETRACOIN>,
         registry: &AdminRegistry,
@@ -88,7 +123,12 @@ module hetracoin::Governance {
         minted_coin
     }
 
-    // Burn HetraCoin tokens (admin only)
+    /// @notice Burns HetraCoin tokens, reducing total supply
+    /// @dev Only callable by the current admin
+    /// @param treasury_cap Treasury capability for burning
+    /// @param registry Admin registry for authorization
+    /// @param coin_to_burn Tokens to be permanently removed from circulation
+    /// @param ctx Transaction context for authorization and events
     public fun burn(
         treasury_cap: &mut TreasuryCap<HETRACOIN>,
         registry: &AdminRegistry,
@@ -111,7 +151,12 @@ module hetracoin::Governance {
         });
     }
 
-    // Add a two-step transfer process
+    /// @notice Initiates the first step of governance transfer
+    /// @dev Creates a transfer request that must be accepted by recipient
+    /// @param treasury_cap Treasury capability for verification
+    /// @param registry Admin registry for authorization
+    /// @param new_admin Address of the proposed new administrator
+    /// @param ctx Transaction context for authorization
     public fun initiate_governance_transfer(
         treasury_cap: &mut TreasuryCap<HETRACOIN>,
         registry: &AdminRegistry,
@@ -132,7 +177,13 @@ module hetracoin::Governance {
         transfer::transfer(transfer_request, new_admin);
     }
 
-    // New admin must explicitly accept the transfer
+    /// @notice Completes the governance transfer process
+    /// @dev Second step where new admin accepts responsibility
+    /// @param treasury_cap Treasury capability for the admin change
+    /// @param transfer_request Transfer request object created in first step
+    /// @param registry Admin registry to update
+    /// @param admin_cap Admin capability confirming authority
+    /// @param ctx Transaction context for authorization and timing
     public fun accept_governance_transfer(
         treasury_cap: &mut TreasuryCap<HETRACOIN>,
         transfer_request: GovernanceTransferRequest,
@@ -155,15 +206,25 @@ module hetracoin::Governance {
         object::delete(id);
     }
 
-    // New struct for transfer requests
+    /// @notice Request object for the two-step governance transfer
+    /// @dev Contains the necessary information for a pending transfer
     public struct GovernanceTransferRequest has key, store {
         id: UID,
+        /// @notice Current admin initiating the transfer
         from: address,
+        /// @notice Proposed new admin that must accept
         to: address,
+        /// @notice Creation timestamp for expiration calculation
         timestamp: u64
     }
 
-    // Transfer the treasury cap to the new admin
+    /// @notice Transfers treasury cap to a new administrator
+    /// @dev Alternative admin change mechanism
+    /// @param treasury_cap Treasury capability to transfer
+    /// @param registry Admin registry to update
+    /// @param admin_cap Admin capability confirming authority
+    /// @param new_admin Address of the new administrator
+    /// @param ctx Transaction context for authorization
     public fun transfer_treasury_cap(
         treasury_cap: &mut TreasuryCap<HETRACOIN>, 
         registry: &mut AdminRegistry,
@@ -181,32 +242,50 @@ module hetracoin::Governance {
     }
     
     // ========== TEST HELPERS ==========
+    /// @notice Creates a governance capability for testing
+    /// @dev Testing utility function, not used in production
+    /// @param ctx Transaction context for object creation
+    /// @return GovernanceCap object
     #[test_only]
-    /// Create a GovernanceCap for testing
     public fun create_governance_cap_for_testing(ctx: &mut TxContext): GovernanceCap {
         GovernanceCap { id: object::new(ctx) }
     }
 
+    /// @notice Gets the sender address from a transfer request
+    /// @dev Test utility accessor function
+    /// @param request The transfer request to inspect
+    /// @return Address that initiated the transfer
     #[test_only]
-    /// Accessor for GovernanceTransferRequest from field (for testing)
     public fun get_transfer_request_from(request: &GovernanceTransferRequest): address {
         request.from
     }
 
+    /// @notice Gets the recipient address from a transfer request
+    /// @dev Test utility accessor function
+    /// @param request The transfer request to inspect
+    /// @return Intended recipient address
     #[test_only]
-    /// Accessor for GovernanceTransferRequest to field (for testing)
     public fun get_transfer_request_to(request: &GovernanceTransferRequest): address {
         request.to
     }
 
+    /// @notice Gets the timestamp from a transfer request
+    /// @dev Test utility accessor function
+    /// @param request The transfer request to inspect
+    /// @return Creation timestamp
     #[test_only]
-    /// Accessor for GovernanceTransferRequest timestamp field (for testing)
     public fun get_transfer_request_timestamp(request: &GovernanceTransferRequest): u64 {
         request.timestamp
     }
 
+    /// @notice Creates a test transfer request directly
+    /// @dev Test utility to create requests without normal flow
+    /// @param from Address initiating the transfer
+    /// @param to Intended recipient address
+    /// @param timestamp Creation timestamp
+    /// @param ctx Transaction context for object creation
+    /// @return GovernanceTransferRequest object
     #[test_only]
-    /// Create a test transfer request directly (for testing)
     public fun create_test_transfer_request(
         from: address,
         to: address,
