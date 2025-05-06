@@ -22,6 +22,8 @@ module hetracoin::Governance {
     const E_EXCEEDS_MAX_MINT: u64 = 2;
     const ENOT_RECIPIENT: u64 = 4;
     const EREQUEST_EXPIRED: u64 = 5;
+    const E_PAUSED: u64 = 6;
+    const E_ZERO_AMOUNT: u64 = 7;
 
     // Event for tracking minting
     public struct MintEvent has copy, drop {
@@ -34,6 +36,20 @@ module hetracoin::Governance {
     public struct BurnEvent has copy, drop {
         burner: address,
         amount: u64,
+        timestamp: u64
+    }
+
+    // Event for tracking admin transfer
+    public struct AdminTransferEvent has copy, drop {
+        previous_admin: address,
+        new_admin: address,
+        timestamp: u64
+    }
+
+    // Event for tracking treasury cap transfer
+    public struct TreasuryCapTransferEvent has copy, drop {
+        from: address,
+        to: address,
         timestamp: u64
     }
 
@@ -72,6 +88,9 @@ module hetracoin::Governance {
         // Only admin can mint
         assert!(sender == HetraCoin::governance_admin(registry), E_NOT_AUTHORIZED);
         
+        // Ensure amount is greater than zero
+        assert!(amount > 0, E_ZERO_AMOUNT);
+        
         // Enforce maximum mint amount
         assert!(amount <= MAX_MINT, E_EXCEEDS_MAX_MINT);
         
@@ -92,15 +111,23 @@ module hetracoin::Governance {
     public fun burn(
         treasury_cap: &mut TreasuryCap<HETRACOIN>,
         registry: &AdminRegistry,
+        pause_state: &EmergencyPauseState,
         coin_to_burn: Coin<HETRACOIN>,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
         
+        // Check that operations are not paused
+        assert!(!pause_state.paused, E_PAUSED);
+        
         // Only admin can burn
         assert!(sender == HetraCoin::governance_admin(registry), E_NOT_AUTHORIZED);
         
         let amount = coin::value(&coin_to_burn);
+        
+        // Ensure amount is greater than zero
+        assert!(amount > 0, E_ZERO_AMOUNT);
+        
         coin::burn(treasury_cap, coin_to_burn);
 
         // Emit on-chain burn event
@@ -134,10 +161,8 @@ module hetracoin::Governance {
 
     // New admin must explicitly accept the transfer
     public fun accept_governance_transfer(
-        treasury_cap: &mut TreasuryCap<HETRACOIN>,
         transfer_request: GovernanceTransferRequest,
         registry: &mut AdminRegistry,
-        admin_cap: &AdminCap,
         ctx: &mut TxContext
     ) {
         let sender = tx_context::sender(ctx);
@@ -147,8 +172,15 @@ module hetracoin::Governance {
         let current_time = tx_context::epoch_timestamp_ms(ctx);
         assert!(current_time - transfer_request.timestamp < 86400000, EREQUEST_EXPIRED); // 24 hours
         
-        // Transfer governance by updating admin in the AdminRegistry
-        HetraCoin::change_admin(treasury_cap, admin_cap, registry, sender, ctx);
+        // Update admin in the AdminRegistry only - don't need caps for this step
+        registry.admin = sender;
+        
+        // Emit an event to track the admin change for transparency
+        event::emit(AdminTransferEvent {
+            previous_admin: transfer_request.from,
+            new_admin: sender,
+            timestamp: tx_context::epoch(ctx)
+        });
         
         // Destroy the request
         let GovernanceTransferRequest { id, from: _, to: _, timestamp: _ } = transfer_request;
@@ -163,21 +195,30 @@ module hetracoin::Governance {
         timestamp: u64
     }
 
-    // Transfer the treasury cap to the new admin
-    public fun transfer_treasury_cap(
-        treasury_cap: &mut TreasuryCap<HETRACOIN>, 
-        registry: &mut AdminRegistry,
-        admin_cap: &AdminCap,
-        new_admin: address, 
+    // Transfer the treasury cap and admin cap to the new admin
+    public entry fun transfer_treasury_cap(
+        treasury_cap: TreasuryCap<HETRACOIN>, 
+        admin_cap: AdminCap,
+        registry: &AdminRegistry,
         ctx: &mut TxContext
     ) {
-        // In a real implementation with a shared TreasuryCap, you would implement the transfer here
-        // For this example, we just verify the current admin is calling this function
+        // Verify the current admin is calling this function
         let sender = tx_context::sender(ctx);
         assert!(sender == HetraCoin::governance_admin(registry), E_NOT_AUTHORIZED);
         
-        // Update the admin in the AdminRegistry
-        HetraCoin::change_admin(treasury_cap, admin_cap, registry, new_admin, ctx);
+        // Get the new admin from the registry
+        let new_admin = HetraCoin::governance_admin(registry);
+        
+        // Transfer capabilities to the new admin
+        transfer::public_transfer(treasury_cap, new_admin);
+        transfer::public_transfer(admin_cap, new_admin);
+        
+        // Emit an event for transparency
+        event::emit(TreasuryCapTransferEvent {
+            from: sender,
+            to: new_admin,
+            timestamp: tx_context::epoch(ctx)
+        });
     }
     
     // ========== TEST HELPERS ==========

@@ -147,8 +147,12 @@ module hetracoin::HetraCoin {
         coin: &mut Coin<HETRACOIN>, 
         recipient: address, 
         amount: u64, 
+        pause_state: &EmergencyPauseState,
         ctx: &mut TxContext
     ) {
+        // Check that operations are not paused
+        assert!(!pause_state.paused, E_PAUSED);
+
         assert!(amount > 0, E_ZERO_AMOUNT);
         let sender = tx_context::sender(ctx);
         let split_coin = coin::split(coin, amount, ctx);
