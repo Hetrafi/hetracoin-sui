@@ -222,7 +222,7 @@ module hetracoin::HetraCoin {
         ctx: &mut TxContext
     ) {
         // Check that operations are not paused
-        assert!(!pause_state.paused, E_PAUSED);
+        assert!(!pause_state.paused, E_SYSTEM_PAUSED);
 
         assert!(amount > 0, E_ZERO_AMOUNT);
         let sender = tx_context::sender(ctx);

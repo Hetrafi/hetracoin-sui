@@ -73,20 +73,6 @@ module hetracoin::Governance {
         timestamp: u64
     }
 
-    // Event for tracking admin transfer
-    public struct AdminTransferEvent has copy, drop {
-        previous_admin: address,
-        new_admin: address,
-        timestamp: u64
-    }
-
-    // Event for tracking treasury cap transfer
-    public struct TreasuryCapTransferEvent has copy, drop {
-        from: address,
-        to: address,
-        timestamp: u64
-    }
-
     /// @notice Capability object that grants governance authority
     /// @dev Used for capability-based authorization of governance actions
     public struct GovernanceCap has key, store {
@@ -271,11 +257,10 @@ module hetracoin::Governance {
     /// @param admin_cap Admin capability confirming authority
     /// @param new_admin Address of the new administrator
     /// @param ctx Transaction context for authorization
-    public fun transfer_treasury_cap(
-        treasury_cap: &mut TreasuryCap<HETRACOIN>, 
-        registry: &mut AdminRegistry,
-        admin_cap: &AdminCap,
-        new_admin: address, 
+    public entry fun transfer_treasury_cap(
+        treasury_cap: TreasuryCap<HETRACOIN>, 
+        admin_cap: AdminCap,
+        registry: &AdminRegistry,
         ctx: &mut TxContext
     ) {
         // Verify the current admin is calling this function
