@@ -240,7 +240,7 @@ module hetracoin::HetraCoinComprehensiveTest {
     }
     
     #[test]
-    #[expected_failure(abort_code = HetraCoin::E_PAUSED)]
+    #[expected_failure(abort_code = HetraCoin::E_SYSTEM_PAUSED)]
     fun test_attempting_operations_while_paused() {
         let mut scenario = ts::begin(ADMIN);
         
@@ -253,37 +253,43 @@ module hetracoin::HetraCoinComprehensiveTest {
             let registry = ts::take_shared<AdminRegistry>(&scenario);
             let mut pause_state = ts::take_shared<EmergencyPauseState>(&scenario);
             
-            let reason = b"Security incident";
-            HetraCoin::pause_operations(&registry, &mut pause_state, reason, ts::ctx(&mut scenario));
+            // Pause operations
+            HetraCoin::pause_operations(&registry, &mut pause_state, b"Security incident", ts::ctx(&mut scenario));
             
             ts::return_shared(registry);
             ts::return_shared(pause_state);
         };
         
-        // Try to mint while paused (should fail with E_PAUSED)
+        // Then try to mint while paused (should fail with E_SYSTEM_PAUSED)
         ts::next_tx(&mut scenario, ADMIN);
         {
             let mut treasury_cap = ts::take_from_sender<TreasuryCap<HETRACOIN>>(&scenario);
             let registry = ts::take_shared<AdminRegistry>(&scenario);
             let pause_state = ts::take_shared<EmergencyPauseState>(&scenario);
             
-            // This should fail with E_PAUSED
-            let _coin = HetraCoin::mint(&mut treasury_cap, AMOUNT, &registry, &pause_state, ts::ctx(&mut scenario));
+            // This should fail because system is paused
+            let coin = HetraCoin::mint(&mut treasury_cap, AMOUNT, &registry, &pause_state, ts::ctx(&mut scenario));
             
-            // Won't reach here
-            abort 0
+            // This won't be reached due to the expected failure, but we need to handle the coin
+            transfer::public_transfer(coin, ADMIN);
+            
+            ts::return_to_sender(&scenario, treasury_cap);
+            ts::return_shared(registry);
+            ts::return_shared(pause_state);
         };
         
         ts::end(scenario);
     }
 
-    // Helper function to set up the coin in tests
+    // Helper function to initialize the coin and capabilities
     fun setup_coin(scenario: &mut Scenario) {
-        // Initialize the coin
+        // Begin with admin
         ts::next_tx(scenario, ADMIN);
         {
             // Create the HETRACOIN witness
             let witness = HetraCoin::create_witness_for_testing();
+            
+            // Initialize HetraCoin
             HetraCoin::init_for_testing(witness, ts::ctx(scenario));
         };
     }

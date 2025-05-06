@@ -1,7 +1,14 @@
 // Copyright 2025 Hetrafi Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-// Treasury module - Securely manages HetraFi platform funds
+/// @title Treasury Module
+/// @notice Securely manages HetraFi platform funds with safeguards
+/// @dev Implements secure fund management with the following features:
+///      - Secure deposit and withdrawal functions
+///      - Reentrancy protection for all financial operations
+///      - Time-locked withdrawals for enhanced security
+///      - Event logging for on-chain transparency
+///      - Admin-controlled access to critical operations
 #[allow(duplicate_alias, unused_use)]
 module hetracoin::Treasury {
     use sui::object::{Self, UID};
@@ -13,48 +20,77 @@ module hetracoin::Treasury {
     use sui::transfer;
 
     // Error codes
+    /// @notice Error when caller is not authorized for operation
     const E_NOT_AUTHORIZED: u64 = 1;
+    /// @notice Error when treasury has insufficient funds for withdrawal
     const E_INSUFFICIENT_FUNDS: u64 = 2;
+    /// @notice Error when reentrancy is detected in a function call
     const E_REENTRANCY: u64 = 3;
+    /// @notice Error when trying to execute a withdrawal before timelock expires
     const E_TIMELOCK_NOT_EXPIRED: u64 = 4;
 
-    // Treasury struct storing funds
+    /// @notice Treasury struct that securely stores HETRA tokens
+    /// @dev Core storage struct with reentrancy protection
     public struct Treasury has key, store {
         id: UID,
+        /// @notice Balance of HETRA tokens held by the treasury
         funds: Balance<HETRACOIN>,
+        /// @notice Address of the administrator with withdrawal permissions
         admin: address,
+        /// @notice Flag to prevent reentrancy attacks
         in_execution: bool // Reentrancy guard
     }
 
-    // Event logging for deposits and withdrawals
+    /// @notice Event emitted when funds are deposited to the treasury
+    /// @dev Used for tracking and auditing purposes
     public struct DepositEvent has copy, drop {
+        /// @notice Address that deposited funds
         sender: address,
+        /// @notice Amount of tokens deposited
         amount: u64,
+        /// @notice Timestamp of the deposit (epoch)
         timestamp: u64
     }
     
+    /// @notice Event emitted when funds are withdrawn from the treasury
+    /// @dev Used for tracking and auditing purposes
     public struct WithdrawalEvent has copy, drop {
+        /// @notice Address that received the withdrawn funds
         recipient: address,
+        /// @notice Amount of tokens withdrawn
         amount: u64,
+        /// @notice Timestamp of the withdrawal (epoch)
         timestamp: u64
     }
 
-    // Add timelock functionality
+    /// @notice Request object for time-locked withdrawals
+    /// @dev Implements a timelock pattern for enhanced security
     public struct WithdrawalRequest has key, store {
         id: UID,
+        /// @notice Amount of tokens requested for withdrawal
         amount: u64,
+        /// @notice Address that will receive the funds
         recipient: address,
+        /// @notice Epoch after which withdrawal can be executed
         expiration_epoch: u64
     }
 
-    // Define the missing event
+    /// @notice Event emitted when a withdrawal request is created
+    /// @dev Used for tracking pending withdrawals
     public struct WithdrawalRequestedEvent has copy, drop {
+        /// @notice Amount of tokens requested for withdrawal
         amount: u64,
+        /// @notice Address that will receive the funds
         recipient: address,
+        /// @notice Epoch after which withdrawal can be executed
         expiration_epoch: u64
     }
 
-    // Create a new treasury
+    /// @notice Creates a new treasury with the specified admin
+    /// @dev Factory function for treasury creation
+    /// @param admin Address that will have administrative control
+    /// @param ctx Transaction context for object creation
+    /// @return Newly created Treasury object
     public fun create_treasury(admin: address, ctx: &mut TxContext): Treasury {
         Treasury {
             id: object::new(ctx),
@@ -64,7 +100,11 @@ module hetracoin::Treasury {
         }
     }
 
-    // Deposit funds into treasury
+    /// @notice Deposits HETRA tokens into the treasury
+    /// @dev Entry function with reentrancy protection
+    /// @param treasury The treasury object to deposit into
+    /// @param coin_in The HETRA tokens to deposit
+    /// @param ctx Transaction context for events
     public entry fun deposit(
         treasury: &mut Treasury, 
         coin_in: Coin<HETRACOIN>, 
@@ -93,7 +133,11 @@ module hetracoin::Treasury {
         treasury.in_execution = false;
     }
 
-    // Allows withdrawal (only authorized accounts)
+    /// @notice Withdraws HETRA tokens from the treasury
+    /// @dev Entry function with authorization and reentrancy checks
+    /// @param treasury The treasury object to withdraw from
+    /// @param amount Amount of tokens to withdraw
+    /// @param ctx Transaction context for authorization and events
     public entry fun withdraw(
         treasury: &mut Treasury, 
         amount: u64, 
@@ -124,12 +168,20 @@ module hetracoin::Treasury {
         treasury.in_execution = false;
     }
 
-    // Get the current treasury balance
+    /// @notice Gets the current balance of the treasury
+    /// @dev Accessor function for treasury balance
+    /// @param treasury The treasury to check
+    /// @return Current HETRA token balance
     public fun get_balance(treasury: &Treasury): u64 {
         balance::value(&treasury.funds)
     }
 
-    // Two-step withdrawal with timelock
+    /// @notice Creates a time-locked withdrawal request
+    /// @dev Implements the first step of two-step withdrawal process
+    /// @param treasury The treasury the withdrawal is requested from
+    /// @param amount Amount of tokens to withdraw
+    /// @param recipient Address that will receive the funds
+    /// @param ctx Transaction context for authorization and object creation
     public entry fun request_withdrawal(
         treasury: &mut Treasury, 
         amount: u64, 
@@ -159,7 +211,11 @@ module hetracoin::Treasury {
         });
     }
 
-    // Execute after timelock expires
+    /// @notice Executes a time-locked withdrawal after timelock expires
+    /// @dev Second step of the two-step withdrawal process
+    /// @param treasury The treasury to withdraw from
+    /// @param request The withdrawal request object
+    /// @param ctx Transaction context for authorization and timing checks
     public entry fun execute_withdrawal(
         treasury: &mut Treasury,
         request: WithdrawalRequest,
@@ -177,8 +233,14 @@ module hetracoin::Treasury {
     }
 
     // ========== TEST HELPERS ==========
+    /// @notice Creates a withdrawal request for testing purposes
+    /// @dev Test utility to create requests directly without authorization
+    /// @param amount Amount of tokens to withdraw
+    /// @param recipient Recipient address
+    /// @param expiration_epoch Epoch when request becomes executable
+    /// @param ctx Transaction context for object creation
+    /// @return WithdrawalRequest object
     #[test_only]
-    /// Helper for tests: Create a WithdrawalRequest directly
     public fun create_test_withdrawal_request(
         amount: u64,
         recipient: address,
@@ -193,32 +255,49 @@ module hetracoin::Treasury {
         }
     }
 
+    /// @notice Gets the amount from a withdrawal request
+    /// @dev Test utility accessor function
+    /// @param request The withdrawal request to inspect
+    /// @return Amount of tokens requested
     #[test_only]
-    /// Accessor for WithdrawalRequest amount field (for testing)
     public fun get_withdrawal_request_amount(request: &WithdrawalRequest): u64 {
         request.amount
     }
 
+    /// @notice Gets the recipient from a withdrawal request
+    /// @dev Test utility accessor function
+    /// @param request The withdrawal request to inspect
+    /// @return Recipient address
     #[test_only]
-    /// Accessor for WithdrawalRequest recipient field (for testing)
     public fun get_withdrawal_request_recipient(request: &WithdrawalRequest): address {
         request.recipient
     }
 
+    /// @notice Gets the expiration epoch from a withdrawal request
+    /// @dev Test utility accessor function
+    /// @param request The withdrawal request to inspect
+    /// @return Expiration epoch
     #[test_only]
-    /// Accessor for WithdrawalRequest expiration field (for testing)
     public fun get_withdrawal_request_expiration(request: &WithdrawalRequest): u64 {
         request.expiration_epoch
     }
 
+    /// @notice Sets the expiration time for a withdrawal request in tests
+    /// @dev Test utility to modify timelock expiration
+    /// @param request The withdrawal request to modify
+    /// @param expiration New expiration epoch
     #[test_only]
-    /// Mock the timelock for testing by setting a specific expiration
     public fun set_withdrawal_request_expiration_for_testing(request: &mut WithdrawalRequest, expiration: u64) {
         request.expiration_epoch = expiration;
     }
 
+    /// @notice Creates a test treasury with initial funds
+    /// @dev Test utility to create pre-funded treasury
+    /// @param admin Administrator address for the treasury
+    /// @param initial_funds Initial HETRA tokens to fund the treasury
+    /// @param ctx Transaction context for object creation
+    /// @return Pre-funded Treasury object
     #[test_only]
-    /// Create a test treasury with initial funds
     public fun create_test_treasury_with_funds(
         admin: address,
         initial_funds: Coin<HETRACOIN>,
@@ -228,5 +307,14 @@ module hetracoin::Treasury {
         let funds = coin::into_balance(initial_funds);
         balance::join(&mut treasury.funds, funds);
         treasury
+    }
+
+    /// @notice Sets the reentrancy flag for testing purposes
+    /// @dev Test utility to simulate reentrancy conditions
+    /// @param treasury The treasury to modify
+    /// @param flag New value for the reentrancy flag
+    #[test_only]
+    public fun set_reentrancy_flag_for_testing(treasury: &mut Treasury, flag: bool) {
+        treasury.in_execution = flag;
     }
 }

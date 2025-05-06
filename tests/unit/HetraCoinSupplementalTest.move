@@ -195,7 +195,7 @@ module hetracoin::HetraCoinSupplementalTest {
     }
 
     #[test]
-    #[expected_failure(abort_code = HetraCoin::EOVERFLOW)]
+    #[expected_failure(abort_code = HetraCoin::E_MAX_SUPPLY_EXCEEDED)]
     fun test_max_supply_overflow() {
         let mut scenario = ts::begin(ADMIN);
         
@@ -209,11 +209,15 @@ module hetracoin::HetraCoinSupplementalTest {
             let registry = ts::take_shared<AdminRegistry>(&scenario);
             let pause_state = ts::take_shared<EmergencyPauseState>(&scenario);
             
-            // This should fail with EOVERFLOW
-            let _coin = HetraCoin::mint(&mut treasury_cap, MAX_SUPPLY + 1, &registry, &pause_state, ts::ctx(&mut scenario));
+            // This should fail with E_MAX_SUPPLY_EXCEEDED
+            let coin = HetraCoin::mint(&mut treasury_cap, MAX_SUPPLY + 1, &registry, &pause_state, ts::ctx(&mut scenario));
             
-            // Won't reach here
-            abort 0
+            // This won't be reached due to the expected failure, but we need to handle the coin
+            transfer::public_transfer(coin, ADMIN);
+            
+            ts::return_to_sender(&scenario, treasury_cap);
+            ts::return_shared(registry);
+            ts::return_shared(pause_state);
         };
         
         ts::end(scenario);
@@ -319,7 +323,7 @@ module hetracoin::HetraCoinSupplementalTest {
     }
 
     #[test]
-    #[expected_failure(abort_code = HetraCoin::E_PAUSED)]
+    #[expected_failure(abort_code = HetraCoin::E_NOT_PAUSED)]
     fun test_double_unpause() {
         let mut scenario = ts::begin(ADMIN);
         
@@ -358,7 +362,7 @@ module hetracoin::HetraCoinSupplementalTest {
             // Verify unpaused state
             assert!(HetraCoin::is_paused(&pause_state) == false, 3);
             
-            // Attempt to unpause again right away, which should fail with E_PAUSED
+            // Attempt to unpause again right away, which should fail with E_NOT_PAUSED
             HetraCoin::unpause_operations(&registry, &mut pause_state, ts::ctx(&mut scenario));
             
             // Won't reach here
