@@ -261,16 +261,14 @@ module hetracoin::Governance {
         treasury_cap: TreasuryCap<HETRACOIN>, 
         admin_cap: AdminCap,
         registry: &AdminRegistry,
+        new_admin: address,
         ctx: &mut TxContext
     ) {
         // Verify the current admin is calling this function
         let sender = tx_context::sender(ctx);
         assert!(sender == HetraCoin::governance_admin(registry), E_NOT_AUTHORIZED);
         
-        // Get the new admin from the registry
-        let new_admin = HetraCoin::governance_admin(registry);
-        
-        // Transfer capabilities to the new admin
+        // Transfer capabilities to the specified new admin
         transfer::public_transfer(treasury_cap, new_admin);
         transfer::public_transfer(admin_cap, new_admin);
         
