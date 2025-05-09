@@ -383,15 +383,14 @@ module hetracoin::Governance {
         assert!(sender == transfer_request.to, ENOT_RECIPIENT);
         assert!(tx_context::epoch_timestamp_ms(ctx) - transfer_request.timestamp < 86400000, EREQUEST_EXPIRED);
         
-        // Update registry first
+        // Update registry to recognize the new admin
         let previous_admin = registry.admin;
         registry.admin = sender;
         
-        // Transfer capabilities
-        transfer::public_transfer(treasury_cap, sender);
-        transfer::public_transfer(admin_cap, sender);
+        // No need to transfer capabilities as they are already owned by the sender
+        // who called this function with them as parameters
         
-        // Emit events
+        // Emit event to track the admin change
         event::emit(AdminTransferEvent {
             previous_admin,
             new_admin: sender,
