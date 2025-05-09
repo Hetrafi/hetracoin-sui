@@ -338,4 +338,80 @@ module hetracoin::Governance {
             timestamp
         }
     }
+
+    /// @notice Initiates the first step of treasury cap transfer
+    /// @dev Creates a transfer request that must be accepted
+    /// @param treasury_cap Treasury capability to transfer
+    /// @param registry Admin registry to update
+    /// @param new_admin Address of the proposed new administrator
+    /// @param ctx Transaction context for authorization
+    public entry fun initiate_treasury_cap_transfer(
+        treasury_cap: &TreasuryCap<HETRACOIN>,  // Not consumed, just referenced
+        registry: &AdminRegistry,
+        new_admin: address,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(sender == HetraCoin::governance_admin(registry), E_NOT_AUTHORIZED);
+        
+        // Create a request that must be accepted
+        let transfer_request = TreasuryCapTransferRequest {
+            id: object::new(ctx),
+            from: sender,
+            to: new_admin,
+            timestamp: tx_context::epoch_timestamp_ms(ctx)
+        };
+        
+        transfer::transfer(transfer_request, new_admin);
+    }
+
+    /// @notice Completes the treasury cap transfer process
+    /// @dev Second step where new admin accepts responsibility
+    /// @param treasury_cap Treasury capability to transfer
+    /// @param admin_cap Admin capability confirming authority
+    /// @param registry Admin registry to update
+    /// @param transfer_request Transfer request object created in first step
+    /// @param ctx Transaction context for authorization and timing
+    public entry fun accept_treasury_cap_transfer(
+        treasury_cap: TreasuryCap<HETRACOIN>, 
+        admin_cap: AdminCap,
+        registry: &mut AdminRegistry,
+        transfer_request: TreasuryCapTransferRequest,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(sender == transfer_request.to, ENOT_RECIPIENT);
+        assert!(tx_context::epoch_timestamp_ms(ctx) - transfer_request.timestamp < 86400000, EREQUEST_EXPIRED);
+        
+        // Update registry first
+        let previous_admin = registry.admin;
+        registry.admin = sender;
+        
+        // Transfer capabilities
+        transfer::public_transfer(treasury_cap, sender);
+        transfer::public_transfer(admin_cap, sender);
+        
+        // Emit events
+        event::emit(AdminTransferEvent {
+            previous_admin,
+            new_admin: sender,
+            timestamp: tx_context::epoch(ctx)
+        });
+        
+        // Destroy the request
+        let TreasuryCapTransferRequest { id, from: _, to: _, timestamp: _ } = transfer_request;
+        object::delete(id);
+    }
+
+    /// @notice Request object for the two-step treasury cap transfer
+    /// @dev Contains the necessary information for a pending transfer
+    public struct TreasuryCapTransferRequest has key, store {
+        id: UID,
+        /// @notice Current admin initiating the transfer
+        from: address,
+        /// @notice Proposed new admin that must accept
+        to: address,
+        /// @notice Creation timestamp for expiration calculation
+        timestamp: u64
+    }
 }
