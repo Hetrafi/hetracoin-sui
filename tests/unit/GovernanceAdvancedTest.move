@@ -2,7 +2,7 @@
 #[allow(unused_use, duplicate_alias, unused_const)]
 module hetracoin_unit::GovernanceAdvancedTest {
     use sui::test_scenario::{Self as ts};
-    use sui::coin::{Self, TreasuryCap};
+    use sui::coin::{Self, Coin, TreasuryCap};
     use sui::transfer;
     use sui::test_utils::assert_eq;
     use sui::object;
@@ -57,27 +57,23 @@ module hetracoin_unit::GovernanceAdvancedTest {
         // Transfer treasury cap to NEW_ADMIN
         ts::next_tx(&mut scenario, ADMIN);
         {
-            let mut treasury_cap = ts::take_from_sender<TreasuryCap<HETRACOIN>>(&scenario);
+            let treasury_cap = ts::take_from_sender<TreasuryCap<HETRACOIN>>(&scenario);
             let governance_cap = ts::take_from_sender<GovernanceCap>(&scenario);
             let admin_cap = ts::take_from_sender<AdminCap>(&scenario);
-            let mut registry = ts::take_shared<AdminRegistry>(&scenario);
+            let registry = ts::take_shared<AdminRegistry>(&scenario);
             
             // Transfer treasury cap to NEW_ADMIN
+            // Note: this consumes both treasury_cap and admin_cap
             Governance::transfer_treasury_cap(
-                &mut treasury_cap, 
-                &mut registry, 
-                &admin_cap, 
+                treasury_cap, 
+                admin_cap,
+                &registry, 
                 NEW_ADMIN, 
                 ts::ctx(&mut scenario)
             );
             
-            // Verify admin was updated
-            assert_eq(HetraCoin::governance_admin(&registry), NEW_ADMIN);
-            
-            // Return objects
-            ts::return_to_sender(&scenario, treasury_cap);
+            // Return governance_cap (treasury_cap and admin_cap are transferred to NEW_ADMIN)
             ts::return_to_sender(&scenario, governance_cap);
-            ts::return_to_sender(&scenario, admin_cap);
             ts::return_shared(registry);
         };
         
@@ -85,7 +81,7 @@ module hetracoin_unit::GovernanceAdvancedTest {
     }
 
     #[test]
-    #[expected_failure(abort_code = 1)] // Governance::E_NOT_AUTHORIZED
+    #[expected_failure(abort_code = 1, location = hetracoin::Governance)] // E_NOT_AUTHORIZED
     fun test_unauthorized_treasury_cap_transfer() {
         let mut scenario = ts::begin(ADMIN);
         setup(&mut scenario);
@@ -93,24 +89,24 @@ module hetracoin_unit::GovernanceAdvancedTest {
         // USER tries to transfer treasury cap
         ts::next_tx(&mut scenario, USER);
         {
-            let mut treasury_cap = ts::take_from_address<TreasuryCap<HETRACOIN>>(&scenario, ADMIN);
+            // Take objects from ADMIN
+            let treasury_cap = ts::take_from_address<TreasuryCap<HETRACOIN>>(&scenario, ADMIN);
             let governance_cap = ts::take_from_address<GovernanceCap>(&scenario, ADMIN);
             let admin_cap = ts::take_from_address<AdminCap>(&scenario, ADMIN);
-            let mut registry = ts::take_shared<AdminRegistry>(&scenario);
+            let registry = ts::take_shared<AdminRegistry>(&scenario);
             
-            // This should fail since USER is not the admin
+            // This will fail with E_NOT_AUTHORIZED because USER is not admin
             Governance::transfer_treasury_cap(
-                &mut treasury_cap, 
-                &mut registry, 
-                &admin_cap, 
+                treasury_cap,  // This will be consumed 
+                admin_cap,     // This will be consumed
+                &registry, 
                 NEW_ADMIN, 
                 ts::ctx(&mut scenario)
             );
             
-            // Return objects (won't reach here)
-            ts::return_to_address(ADMIN, treasury_cap);
+            // This part won't be reached due to the expected failure
+            // but is needed for compilation
             ts::return_to_address(ADMIN, governance_cap);
-            ts::return_to_address(ADMIN, admin_cap);
             ts::return_shared(registry);
         };
         
@@ -183,7 +179,7 @@ module hetracoin_unit::GovernanceAdvancedTest {
     }
 
     #[test]
-    #[expected_failure(abort_code = 1)] // Governance::E_NOT_AUTHORIZED
+    #[expected_failure(abort_code = 1, location = hetracoin::Governance)] // E_NOT_AUTHORIZED
     fun test_unauthorized_change_admin() {
         let mut scenario = ts::begin(ADMIN);
         setup(&mut scenario);

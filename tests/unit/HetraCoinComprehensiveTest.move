@@ -52,15 +52,17 @@ module hetracoin::HetraCoinComprehensiveTest {
         ts::next_tx(&mut scenario, USER1);
         {
             let mut coin = ts::take_from_sender<Coin<HETRACOIN>>(&scenario);
+            let pause_state = ts::take_shared<EmergencyPauseState>(&scenario);
             
             // Split and send half to USER2
             let half_amount = AMOUNT / 2;
-            HetraCoin::secure_transfer(&mut coin, USER2, half_amount, ts::ctx(&mut scenario));
+            HetraCoin::secure_transfer(&mut coin, USER2, half_amount, &pause_state, ts::ctx(&mut scenario));
             
             // Check remaining balance
             assert_eq(coin::value(&coin), AMOUNT - half_amount);
             
             ts::return_to_sender(&scenario, coin);
+            ts::return_shared(pause_state);
         };
         
         // Check USER2 received the coins
@@ -229,11 +231,13 @@ module hetracoin::HetraCoinComprehensiveTest {
         ts::next_tx(&mut scenario, USER1);
         {
             let mut coin = ts::take_from_sender<Coin<HETRACOIN>>(&scenario);
+            let pause_state = ts::take_shared<EmergencyPauseState>(&scenario);
             
             // This should fail with E_ZERO_AMOUNT
-            HetraCoin::secure_transfer(&mut coin, USER2, 0, ts::ctx(&mut scenario));
+            HetraCoin::secure_transfer(&mut coin, USER2, 0, &pause_state, ts::ctx(&mut scenario));
             
             ts::return_to_sender(&scenario, coin);
+            ts::return_shared(pause_state);
         };
         
         ts::end(scenario);

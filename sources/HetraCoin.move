@@ -338,7 +338,23 @@ module hetracoin::HetraCoin {
         pause_state.paused
     }
 
-    /// @notice Toggles the emergency pause state
+    /// @notice Get the admin address from the registry
+    /// @dev Public accessor for the admin field
+    /// @param registry The admin registry
+    /// @return Current admin address
+    public fun get_admin(registry: &AdminRegistry): address {
+        registry.admin
+    }
+
+    /// @notice Set the admin address in the registry
+    /// @dev Public setter for the admin field
+    /// @param registry The admin registry to modify
+    /// @param new_admin The new admin address to set
+    public fun set_admin(registry: &mut AdminRegistry, new_admin: address) {
+        registry.admin = new_admin;
+    }
+
+    /// @notice Toggle the emergency pause state
     /// @dev Only callable by admin, emits event when state changes
     /// @param pause_state The pause state to modify
     /// @param registry Admin registry for authorization

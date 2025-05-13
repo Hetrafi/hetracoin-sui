@@ -8,16 +8,22 @@
     "deploy:testnet": "node scripts/deploy.js deploy testnet",
     "deploy:mainnet": "node scripts/deploy.js deploy mainnet",
     "verify:testnet": "node scripts/deploy.js verify testnet",
-    "verify:mainnet": "node scripts/deploy.js verify mainnet"
+    "verify:mainnet": "node scripts/deploy.js verify mainnet",
+    "deploy:phase1:testnet": "npx ts-node scripts/deploy-phase1.ts deploy testnet",
+    "deploy:phase1:mainnet": "npx ts-node scripts/deploy-phase1.ts deploy mainnet",
+    "verify:phase1:testnet": "npx ts-node scripts/deploy-phase1.ts verify testnet",
+    "verify:phase1:mainnet": "npx ts-node scripts/deploy-phase1.ts verify mainnet"
   },
   "dependencies": {
     "@mysten/sui.js": "^0.41.2",
+    "bech32": "^2.0.0",
     "dotenv": "^16.0.3"
   },
   "devDependencies": {
     "@types/node": "^18.15.11",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
+    "ts-node": "^10.9.2",
     "typescript": "^5.0.4"
   }
 }

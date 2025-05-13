@@ -6,7 +6,7 @@ module hetracoin_unit::EventTest {
     use sui::test_scenario::{Self};
     use sui::test_utils::assert_eq;
     use sui::coin::{Self, Coin, TreasuryCap};
-    use hetracoin::HetraCoin::{Self, HETRACOIN};
+    use hetracoin::HetraCoin::{Self, HETRACOIN, EmergencyPauseState};
 
     #[test]
     public fun test_transfer_functionality() {
@@ -38,18 +38,20 @@ module hetracoin_unit::EventTest {
         test_scenario::next_tx(scenario, user);
         {
             let mut coin = test_scenario::take_from_sender<Coin<HETRACOIN>>(scenario);
+            let pause_state = test_scenario::take_shared<EmergencyPauseState>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
             // Initial balance check
             assert_eq(coin::value(&coin), 1000);
             
             // Perform the transfer
-            HetraCoin::secure_transfer(&mut coin, admin, 500, ctx);
+            HetraCoin::secure_transfer(&mut coin, admin, 500, &pause_state, ctx);
             
             // Check remaining balance
             assert_eq(coin::value(&coin), 500);
             
             test_scenario::return_to_sender(scenario, coin);
+            test_scenario::return_shared(pause_state);
         };
         
         // Check that admin received the coins

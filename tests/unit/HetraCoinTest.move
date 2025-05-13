@@ -8,7 +8,7 @@ module hetracoin_unit::HetraCoinTest {
     use sui::test_scenario::{Self, Scenario};
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::transfer;
-    use hetracoin::HetraCoin::{Self, HETRACOIN};
+    use hetracoin::HetraCoin::{Self, HETRACOIN, EmergencyPauseState};
 
     #[test]
     public fun test_transfer() {
@@ -47,12 +47,14 @@ module hetracoin_unit::HetraCoinTest {
             assert!(test_scenario::has_most_recent_for_sender<Coin<HETRACOIN>>(scenario), 0);
             
             let mut coin = test_scenario::take_from_sender<Coin<HETRACOIN>>(scenario);
+            let pause_state = test_scenario::take_shared<EmergencyPauseState>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
-            HetraCoin::secure_transfer(&mut coin, admin, 500, ctx);
+            HetraCoin::secure_transfer(&mut coin, admin, 500, &pause_state, ctx);
             
             assert_eq(coin::value(&coin), 500);
             test_scenario::return_to_sender(scenario, coin);
+            test_scenario::return_shared(pause_state);
         };
         
         test_scenario::end(scenario_val);

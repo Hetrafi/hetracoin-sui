@@ -158,7 +158,7 @@ module hetracoin::Governance {
         let sender = tx_context::sender(ctx);
         
         // Check that operations are not paused
-        assert!(!pause_state.paused, E_PAUSED);
+        assert!(!HetraCoin::is_paused(pause_state), E_PAUSED);
         
         // Only admin can burn
         assert!(sender == HetraCoin::governance_admin(registry), E_NOT_AUTHORIZED);
@@ -221,10 +221,18 @@ module hetracoin::Governance {
         
         // Check if the request is still valid (e.g., not expired)
         let current_time = tx_context::epoch_timestamp_ms(ctx);
-        assert!(current_time - transfer_request.timestamp < 86400000, EREQUEST_EXPIRED); // 24 hours
         
-        // Update admin in the AdminRegistry only - don't need caps for this step
-        registry.admin = sender;
+        // Check for expiration with safe arithmetic
+        // If current_time is less than timestamp (should never happen in practice),
+        // or if the difference is greater than 24 hours, the request is expired
+        assert!(
+            current_time >= transfer_request.timestamp && 
+            (current_time - transfer_request.timestamp) < 86400000, 
+            EREQUEST_EXPIRED
+        ); // 24 hours
+        
+        // Update admin in the AdminRegistry using the accessor function
+        HetraCoin::set_admin(registry, sender);
         
         // Emit an event to track the admin change for transparency
         event::emit(AdminTransferEvent {
@@ -381,14 +389,22 @@ module hetracoin::Governance {
     ) {
         let sender = tx_context::sender(ctx);
         assert!(sender == transfer_request.to, ENOT_RECIPIENT);
-        assert!(tx_context::epoch_timestamp_ms(ctx) - transfer_request.timestamp < 86400000, EREQUEST_EXPIRED);
         
-        // Update registry to recognize the new admin
-        let previous_admin = registry.admin;
-        registry.admin = sender;
+        // Safe expiration check to prevent arithmetic underflow
+        let current_time = tx_context::epoch_timestamp_ms(ctx);
+        assert!(
+            current_time >= transfer_request.timestamp && 
+            (current_time - transfer_request.timestamp) < 86400000, 
+            EREQUEST_EXPIRED
+        );
         
-        // No need to transfer capabilities as they are already owned by the sender
-        // who called this function with them as parameters
+        // Update registry to recognize the new admin using accessor function
+        let previous_admin = HetraCoin::get_admin(registry);
+        HetraCoin::set_admin(registry, sender);
+        
+        // Transfer the capabilities to the new admin
+        transfer::public_transfer(treasury_cap, sender);
+        transfer::public_transfer(admin_cap, sender);
         
         // Emit event to track the admin change
         event::emit(AdminTransferEvent {

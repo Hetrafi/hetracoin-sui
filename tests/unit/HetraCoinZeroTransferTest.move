@@ -7,7 +7,7 @@ module hetracoin_unit::HetraCoinZeroTransferTest {
     use sui::test_scenario;
     use sui::coin::{Self, Coin};
     use sui::transfer;
-    use hetracoin::HetraCoin::{Self, HETRACOIN};
+    use hetracoin::HetraCoin::{Self, HETRACOIN, EmergencyPauseState};
 
     #[test]
     // Update the expected_failure to use a valid error code
@@ -39,13 +39,15 @@ module hetracoin_unit::HetraCoinZeroTransferTest {
         test_scenario::next_tx(scenario, admin);
         {
             let mut coin = test_scenario::take_from_sender<Coin<HETRACOIN>>(scenario);
+            let pause_state = test_scenario::take_shared<EmergencyPauseState>(scenario);
             let ctx = test_scenario::ctx(scenario);
             
-            // Based on the error message, secure_transfer takes 4 arguments:
-            // &mut Coin<HETRACOIN>, recipient: address, amount: u64, ctx: &mut TxContext
-            HetraCoin::secure_transfer(&mut coin, recipient, 0, ctx);
+            // Based on the error message, secure_transfer takes 5 arguments now:
+            // &mut Coin<HETRACOIN>, recipient: address, amount: u64, &EmergencyPauseState, ctx: &mut TxContext
+            HetraCoin::secure_transfer(&mut coin, recipient, 0, &pause_state, ctx);
             
             test_scenario::return_to_sender(scenario, coin);
+            test_scenario::return_shared(pause_state);
         };
         
         test_scenario::end(scenario_val);

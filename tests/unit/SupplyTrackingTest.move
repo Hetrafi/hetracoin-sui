@@ -120,11 +120,12 @@ module hetracoin_unit::SupplyTrackingTest {
         {
             let mut treasury_cap = ts::take_from_sender<TreasuryCap<HETRACOIN>>(scenario);
             let admin_registry = ts::take_shared<AdminRegistry>(scenario);
+            let pause_state = ts::take_shared<EmergencyPauseState>(scenario);
             let coin_to_burn = ts::take_from_sender<coin::Coin<HETRACOIN>>(scenario);
             let ctx = ts::ctx(scenario);
             
             // Burn the coins
-            Governance::burn(&mut treasury_cap, &admin_registry, coin_to_burn, ctx);
+            Governance::burn(&mut treasury_cap, &admin_registry, &pause_state, coin_to_burn, ctx);
             
             // Supply should now be 2500 (3000 - 500)
             let new_supply = HetraCoin::total_supply(&treasury_cap);
@@ -132,6 +133,7 @@ module hetracoin_unit::SupplyTrackingTest {
             
             ts::return_to_sender(scenario, treasury_cap);
             ts::return_shared(admin_registry);
+            ts::return_shared(pause_state);
         };
         
         ts::end(scenario_val);

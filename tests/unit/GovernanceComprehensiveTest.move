@@ -5,7 +5,7 @@ module hetracoin::GovernanceComprehensiveTest {
     use sui::coin::{Self, Coin, TreasuryCap};
     use sui::transfer;
     use sui::test_utils::assert_eq;
-    use sui::tx_context::TxContext;
+    use sui::tx_context::{Self, TxContext};
     use sui::clock::{Self, Clock};
 
     use hetracoin::HetraCoin::{Self, HETRACOIN, AdminCap, AdminRegistry, EmergencyPauseState};
@@ -58,7 +58,7 @@ module hetracoin::GovernanceComprehensiveTest {
             assert_eq(HetraCoin::total_supply(&treasury_cap), AMOUNT);
 
             // Burn the minted coins
-            Governance::burn(&mut treasury_cap, &registry, minted_coin, ts::ctx(&mut scenario));
+            Governance::burn(&mut treasury_cap, &registry, &pause_state, minted_coin, ts::ctx(&mut scenario));
 
             // Check total supply is back to 0
             assert_eq(HetraCoin::total_supply(&treasury_cap), 0);
@@ -127,11 +127,13 @@ module hetracoin::GovernanceComprehensiveTest {
             let coin_to_burn = ts::take_from_sender<Coin<HETRACOIN>>(&scenario);
 
             // This should fail because sender (USER1) is not admin in registry
-            Governance::burn(&mut treasury_cap, &registry, coin_to_burn, ts::ctx(&mut scenario));
+            let pause_state = ts::take_shared<EmergencyPauseState>(&scenario);
+            Governance::burn(&mut treasury_cap, &registry, &pause_state, coin_to_burn, ts::ctx(&mut scenario));
 
             // Cleanup (won't be reached)
             ts::return_to_address(ADMIN, treasury_cap);
             ts::return_shared(registry);
+            ts::return_shared(pause_state);
             // coin_to_burn is consumed by the failed burn call
         };
 
@@ -187,7 +189,7 @@ module hetracoin::GovernanceComprehensiveTest {
             let mut registry = ts::take_shared<AdminRegistry>(&scenario);
             
             // Accept the transfer - now USER1 is already the admin so this should work
-            Governance::accept_governance_transfer(&mut treasury_cap, transfer_request, &mut registry, &admin_cap, ts::ctx(&mut scenario));
+            Governance::accept_governance_transfer(transfer_request, &mut registry, ts::ctx(&mut scenario));
 
             // Verify admin is still USER1
             assert_eq(HetraCoin::governance_admin(&registry), USER1);
@@ -231,7 +233,7 @@ module hetracoin::GovernanceComprehensiveTest {
             let mut registry = ts::take_shared<AdminRegistry>(&scenario);
 
             // This should fail as USER2 is not the recipient
-            Governance::accept_governance_transfer(&mut treasury_cap, transfer_request, &mut registry, &admin_cap, ts::ctx(&mut scenario));
+            Governance::accept_governance_transfer(transfer_request, &mut registry, ts::ctx(&mut scenario));
 
             // Cleanup (won't be reached)
             ts::return_to_address(ADMIN, treasury_cap);
@@ -243,47 +245,55 @@ module hetracoin::GovernanceComprehensiveTest {
     }
 
     #[test]
-    #[expected_failure(abort_code = HetraCoin::E_NOT_AUTHORIZED)]
+    #[expected_failure(abort_code = Governance::EREQUEST_EXPIRED)]
     fun test_accept_transfer_expired() {
         let mut scenario = ts::begin(ADMIN);
         setup(&mut scenario);
 
-        // Admin initiates transfer to USER1
+        // Create an expired transfer request directly
         ts::next_tx(&mut scenario, ADMIN);
         {
-            let mut treasury_cap = ts::take_from_sender<TreasuryCap<HETRACOIN>>(&scenario);
-            let registry = ts::take_shared<AdminRegistry>(&scenario);
+            let ctx = ts::ctx(&mut scenario);
+            
+            // Create a transfer request with a very old timestamp (expired)
+            // Use a timestamp that is definitely more than 24 hours before any current time
+            let expired_timestamp = 1000; // A very early timestamp
+            
+            // Create the request manually with an expired timestamp
+            let transfer_request = Governance::create_test_transfer_request(
+                ADMIN, // from
+                USER1, // to
+                expired_timestamp,
+                ctx
+            );
+            
+            // Transfer the expired request to USER1
+            transfer::public_transfer(transfer_request, USER1);
+            
+            // Also transfer the admin cap to USER1
             let admin_cap = ts::take_from_sender<AdminCap>(&scenario);
-            
-            Governance::initiate_governance_transfer(&mut treasury_cap, &registry, USER1, ts::ctx(&mut scenario));
-            
-            // Transfer admin_cap to USER1
             transfer::public_transfer(admin_cap, USER1);
-            
-            ts::return_to_sender(&scenario, treasury_cap);
-            ts::return_shared(registry);
         };
 
-        // Advance time by advancing the epoch significantly (simulating time passage)
-        ts::next_epoch(&mut scenario, ADMIN);
-        ts::next_epoch(&mut scenario, ADMIN); // Advance a couple of epochs to simulate time
+        // Set USER1 as admin to make authorization pass (isolating the expiration check)
+        ts::next_tx(&mut scenario, ADMIN);
+        {
+            let mut registry = ts::take_shared<AdminRegistry>(&scenario);
+            HetraCoin::set_admin_for_testing(&mut registry, USER1);
+            ts::return_shared(registry);
+        };
 
         // USER1 tries to accept the expired request
         ts::next_tx(&mut scenario, USER1);
         {
-            // USER1 has the transfer request
             let transfer_request = ts::take_from_sender<GovernanceTransferRequest>(&scenario);
             let admin_cap = ts::take_from_sender<AdminCap>(&scenario);
-            
-            // Admin still holds TreasuryCap
-            let mut treasury_cap = ts::take_from_address<TreasuryCap<HETRACOIN>>(&scenario, ADMIN);
             let mut registry = ts::take_shared<AdminRegistry>(&scenario);
 
-            // This should now fail with unauthorized since time check happens after admin check
-            Governance::accept_governance_transfer(&mut treasury_cap, transfer_request, &mut registry, &admin_cap, ts::ctx(&mut scenario));
+            // This should fail with EREQUEST_EXPIRED since the request timestamp is more than 24 hours old
+            Governance::accept_governance_transfer(transfer_request, &mut registry, ts::ctx(&mut scenario));
 
             // Cleanup (won't be reached)
-            ts::return_to_address(ADMIN, treasury_cap);
             ts::return_to_sender(&scenario, admin_cap);
             ts::return_shared(registry);
         };

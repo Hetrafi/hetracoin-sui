@@ -87,19 +87,21 @@ module hetracoin::HetraCoinSupplementalTest {
         ts::next_tx(&mut scenario, USER1);
         {
             let mut coin = ts::take_from_sender<Coin<HETRACOIN>>(&scenario);
+            let pause_state = ts::take_shared<EmergencyPauseState>(&scenario);
             
             // Check initial balance
             let initial_balance = coin::value(&coin);
             assert!(initial_balance == AMOUNT, 1);
             
             // Perform secure_transfer
-            HetraCoin::secure_transfer(&mut coin, USER2, AMOUNT / 2, ts::ctx(&mut scenario));
+            HetraCoin::secure_transfer(&mut coin, USER2, AMOUNT / 2, &pause_state, ts::ctx(&mut scenario));
             
             // Check remaining balance
             let remaining_balance = coin::value(&coin);
             assert!(remaining_balance == AMOUNT / 2, 2);
             
             ts::return_to_sender(&scenario, coin);
+            ts::return_shared(pause_state);
         };
         
         // Check that USER2 received the coins
