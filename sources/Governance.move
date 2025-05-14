@@ -23,7 +23,7 @@ module hetracoin::Governance {
 
     /// @notice Maximum tokens that can be minted in a single transaction
     /// @dev Limits risk exposure from any single mint operation
-    const MAX_MINT: u64 = 1_000_000_000; // 1 Billion HETRA max per mint
+    const MAX_MINT: u64 = 10_000_000; // 10 Million HETRA max per mint
 
     // Error codes
     /// @notice Error when caller is not authorized for an operation
@@ -428,5 +428,42 @@ module hetracoin::Governance {
         to: address,
         /// @notice Creation timestamp for expiration calculation
         timestamp: u64
+    }
+
+    /// @notice Mints new HetraCoin tokens and transfers them to a recipient
+    /// @dev Entry wrapper around mint function that handles the returned coin
+    /// @param treasury_cap Treasury capability for minting
+    /// @param registry Admin registry for authorization
+    /// @param pause_state Emergency pause state to prevent minting when paused
+    /// @param amount Amount of tokens to mint
+    /// @param recipient Address to receive the minted tokens
+    /// @param ctx Transaction context for authorization and events
+    public entry fun mint_and_transfer(
+        treasury_cap: &mut TreasuryCap<HETRACOIN>,
+        registry: &AdminRegistry,
+        pause_state: &EmergencyPauseState,
+        amount: u64,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        // Only admin can call this function
+        let sender = tx_context::sender(ctx);
+        assert!(sender == HetraCoin::governance_admin(registry), E_NOT_AUTHORIZED);
+        
+        // Validate recipient address (ensure it's not zero address)
+        assert!(recipient != @0x0, E_NOT_AUTHORIZED);
+        
+        // Mint coins (this will check pause state and supply limits)
+        let minted_coin = mint(treasury_cap, registry, pause_state, amount, ctx);
+        
+        // Transfer to recipient
+        transfer::public_transfer(minted_coin, recipient);
+        
+        // Log the mint and transfer
+        event::emit(MintEvent {
+            minter: sender,
+            amount,
+            timestamp: tx_context::epoch(ctx)
+        });
     }
 }

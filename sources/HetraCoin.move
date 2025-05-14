@@ -122,7 +122,7 @@ module hetracoin::HetraCoin {
     /// @notice Maximum total supply for the HETRA token (1 trillion)
     /// @dev Used to ensure the supply never exceeds this amount
     ///      Provides economic predictability for the token ecosystem
-    const MAX_SUPPLY: u64 = 1_000_000_000_000;
+    const MAX_SUPPLY: u64 = 1_000_000_000;
 
     /// @notice Internal: Core logic to create currency, cap, and metadata
     /// @dev Requires the witness instance to ensure single initialization

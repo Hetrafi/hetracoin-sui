@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 import { fromB64, normalizeSuiAddress } from '@mysten/sui.js/utils';
+import { bcs } from '@mysten/sui.js/bcs';
 
 dotenv.config();
 
