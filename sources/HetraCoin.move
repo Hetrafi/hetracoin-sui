@@ -139,7 +139,7 @@ module hetracoin::HetraCoin {
             b"HETRA",       // 3. Symbol
             b"HetraCoin",   // 4. Name
             b"Decentralized gaming token for HetraFi", // 5. Description
-            option::none<Url>(), // 6. Icon URL
+            option::some(url::new_unsafe_from_bytes(b"https://cyan-careful-badger-476.mypinata.cloud/ipfs/bafkreifxjlyskkuh2mhj4mohiyg7b3br3jsrrosmazmlomhcgquhejhjjy")), // 6. Icon URL
             ctx            // 7. Context
         )
     }

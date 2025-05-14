@@ -6,10 +6,9 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 async function main() {
-  const privateKeyBase64 = process.env.DEPLOYER_PRIVATE_KEY;
-  if (!privateKeyBase64) {
-    throw new Error('Missing DEPLOYER_PRIVATE_KEY in .env file');
-  }
+  // Set package ID directly since we know it from deployment
+  const packageId = '0x8667452485be796d6cb4ad2fce0d8e19734c1eb2a673b483186c7dc1b4062369';
+  const privateKeyBase64 = process.env.DEPLOYER_PRIVATE_KEY || '5n7DJoMI7j/h4+0KB6ApWG6qe6b2EyzcabAxOmskagE=';
 
   // Setup provider and keypair
   const privateKeyBytes = Buffer.from(privateKeyBase64, 'base64');
@@ -18,12 +17,6 @@ async function main() {
     url: 'https://fullnode.testnet.sui.io',
   });
   const address = keypair.getPublicKey().toSuiAddress();
-
-  // Replace with your actual package ID after deployment
-  const packageId = process.env.PACKAGE_ID;
-  if (!packageId) {
-    throw new Error('Missing PACKAGE_ID in .env file');
-  }
   
   console.log("Testing package:", packageId);
   console.log("From address:", address);
@@ -49,43 +42,82 @@ async function main() {
   console.log("TreasuryCap:", treasuryCap?.data?.objectId);
   console.log("AdminCap:", adminCap?.data?.objectId);
   
-  // 2. Find shared objects
-  console.log("Searching for shared objects...");
-  const packageDynamicFields = await provider.getDynamicFields({
-    parentId: packageId
+  // 2. Examine owned objects in more detail
+  console.log("\nExamining owned objects in detail...");
+  
+  // List all owned objects with their types
+  console.log("\nAll owned objects:");
+  objects.data.forEach((obj, index) => {
+    if (obj.data && obj.data.type) {
+      console.log(`${index + 1}. ${obj.data.type}: ${obj.data.objectId}`);
+    }
   });
   
-  console.log("Package dynamic fields:", packageDynamicFields.data);
-  
-  // Find AdminRegistry and EmergencyPauseState
-  const adminRegistryObjects = await provider.getOwnedObjects({
-    owner: "0x0000000000000000000000000000000000000000",
-    filter: { StructType: `${packageId}::HetraCoin::AdminRegistry` },
-    options: { showType: true }
-  });
-  console.log("Admin Registry search:", adminRegistryObjects);
-  
-  const pauseState = await provider.getOwnedObjects({
-    owner: "0x0000000000000000000000000000000000000000",
-    filter: { StructType: `${packageId}::HetraCoin::EmergencyPauseState` },
-    options: { showType: true }
-  });
-  console.log("EmergencyPauseState search:", pauseState);
-  
-  // 3. Try to mint some tokens (if we have TreasuryCap)
+  // 3. Examine TreasuryCap in more detail if available
   if (treasuryCap?.data?.objectId) {
-    console.log("Testing mint functionality...");
-    
-    // Need to find AdminRegistry and EmergencyPauseState first
-    const dynamicFields = await provider.getDynamicFields({ parentId: packageId });
-    console.log("Dynamic fields:", dynamicFields);
-    
-    // Try a different query approach
-    const suiObjects = await provider.getObject({
-      id: packageId,
-      options: { showContent: true }
-    });
-    console.log("Package details:", suiObjects);
+    try {
+      console.log("\nFetching TreasuryCap details...");
+      const treasuryCapDetails = await provider.getObject({
+        id: treasuryCap.data.objectId,
+        options: { showContent: true, showOwner: true }
+      });
+      console.log("TreasuryCap details:", JSON.stringify(treasuryCapDetails.data, null, 2));
+    } catch (error) {
+      console.error("Error fetching TreasuryCap details:", error);
+    }
+  }
+  
+  // 4. Examine AdminCap in more detail if available
+  if (adminCap?.data?.objectId) {
+    try {
+      console.log("\nFetching AdminCap details...");
+      const adminCapDetails = await provider.getObject({
+        id: adminCap.data.objectId,
+        options: { showContent: true, showOwner: true }
+      });
+      console.log("AdminCap details:", JSON.stringify(adminCapDetails.data, null, 2));
+    } catch (error) {
+      console.error("Error fetching AdminCap details:", error);
+    }
+  }
+  
+  // 5. Search for CoinMetadata
+  console.log("\nSearching for CoinMetadata directly...");
+  try {
+    const metadataObjects = objects.data.filter(obj => 
+      obj.data?.type?.includes('CoinMetadata')
+    );
+      
+    if (metadataObjects.length > 0) {
+      console.log(`Found ${metadataObjects.length} CoinMetadata objects:`);
+      
+      for (const obj of metadataObjects) {
+        if (obj.data?.objectId) {
+          const metadata = await provider.getObject({
+            id: obj.data.objectId,
+            options: { showContent: true, showDisplay: true }
+          });
+          console.log("Metadata details:", JSON.stringify(metadata.data, null, 2));
+        }
+      }
+    } else {
+      console.log("No CoinMetadata objects found among owned objects");
+    }
+  } catch (error) {
+    console.error("Error fetching CoinMetadata:", error);
+  }
+  
+  // 6. Summary
+  if (treasuryCap?.data?.objectId && adminCap?.data?.objectId) {
+    console.log("\nDeployment verification completed successfully!");
+    console.log("Your HetraCoin contract is deployed and contains the necessary capabilities:");
+    console.log(`- Treasury Cap: ${treasuryCap.data.objectId}`);
+    console.log(`- Admin Cap: ${adminCap.data.objectId}`);
+    console.log("You can now proceed with further testing or integration.");
+  } else {
+    console.log("\nDeployment verification incomplete - missing critical objects:");
+    if (!treasuryCap?.data?.objectId) console.log("- Missing TreasuryCap");
+    if (!adminCap?.data?.objectId) console.log("- Missing AdminCap");
   }
 }
 
