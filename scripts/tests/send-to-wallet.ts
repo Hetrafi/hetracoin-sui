@@ -19,13 +19,10 @@ function askQuestion(query: string): Promise<string> {
 
 async function main() {
   // Configuration - hardcoded from our deployment
-  const packageId = '0x8667452485be796d6cb4ad2fce0d8e19734c1eb2a673b483186c7dc1b4062369';
+  const packageId = '0xfcb754547b27b74a5d8ae184372dd2ed32226491c7f19cc69329e672772ba05e';
   const privateKeyBase64 = process.env.DEPLOYER_PRIVATE_KEY || '5n7DJoMI7j/h4+0KB6ApWG6qe6b2EyzcabAxOmskagE=';
   const coinType = `${packageId}::HetraCoin::HETRACOIN`;
   
-  // The coin with 10 million tokens (from previous output)
-  const largeCoinId = '0x7363b5c50318d45ef82c20d879497f63a3baa9c64eb0649cdf8f7c7ad14bd9a4';
-
   // Setup provider and keypair
   const privateKeyBytes = Buffer.from(privateKeyBase64, 'base64');
   const keypair = Ed25519Keypair.fromSecretKey(privateKeyBytes);

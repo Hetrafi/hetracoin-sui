@@ -7,9 +7,8 @@ dotenv.config();
 
 async function main() {
   // Configuration - hardcoded from our deployment
-  const packageId = '0x8667452485be796d6cb4ad2fce0d8e19734c1eb2a673b483186c7dc1b4062369';
+  const packageId = '0xfcb754547b27b74a5d8ae184372dd2ed32226491c7f19cc69329e672772ba05e';
   const privateKeyBase64 = process.env.DEPLOYER_PRIVATE_KEY || '5n7DJoMI7j/h4+0KB6ApWG6qe6b2EyzcabAxOmskagE=';
-  const treasuryCapId = '0x11af992dc6fc1cdfde2443496d544a926327fd6d33ad5504abbb0d4e807d66c4';
   const coinType = `${packageId}::HetraCoin::HETRACOIN`;
 
   // Setup provider and keypair
@@ -22,7 +21,39 @@ async function main() {
   
   console.log("Minting 10 million HETRA tokens");
   console.log("Sender Address:", senderAddress);
-  console.log("TreasuryCap ID:", treasuryCapId);
+  
+  // Find TreasuryCap object
+  async function findTreasuryCap() {
+    console.log("\n=== Finding TreasuryCap ===");
+    
+    try {
+      const objects = await provider.getOwnedObjects({
+        owner: senderAddress,
+        filter: {
+          StructType: `0x2::coin::TreasuryCap<${coinType}>`
+        },
+        options: {
+          showContent: true,
+          showType: true,
+        }
+      });
+      
+      if (objects.data.length === 0) {
+        throw new Error("TreasuryCap not found");
+      }
+      
+      const treasuryCapId = objects.data[0].data?.objectId;
+      if (!treasuryCapId) {
+        throw new Error("TreasuryCap ID is undefined");
+      }
+      
+      console.log("Found TreasuryCap ID:", treasuryCapId);
+      return treasuryCapId;
+    } catch (error) {
+      console.error("Failed to find TreasuryCap:", error);
+      throw error;
+    }
+  }
   
   // Define recipient address - same as sender for now
   // You can change this to any valid Sui address if needed
@@ -31,6 +62,9 @@ async function main() {
   // Mint 10 million tokens
   async function mintTokens() {
     console.log("\n=== Minting 10,000,000 HETRA Tokens ===");
+    
+    // Find the TreasuryCap
+    const treasuryCapId = await findTreasuryCap();
     
     // Create a mint transaction
     const mintTx = new TransactionBlock();
@@ -81,6 +115,7 @@ async function main() {
   // Check balance
   async function checkBalance() {
     console.log("\n=== Checking Balance ===");
+    console.log("Checking for coins of type:", coinType);
     
     try {
       // Get all coins of the HetraCoin type
