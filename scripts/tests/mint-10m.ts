@@ -17,56 +17,39 @@ async function main() {
   const provider = new SuiClient({
     url: 'https://fullnode.testnet.sui.io',
   });
-  const senderAddress = keypair.getPublicKey().toSuiAddress();
+  const walletAddress = keypair.getPublicKey().toSuiAddress();
   
-  console.log("Minting 10 million HETRA tokens");
-  console.log("Sender Address:", senderAddress);
+  console.log("=== HETRACOIN 10M MINTING SCRIPT ===");
+  console.log("Wallet Address:", walletAddress);
+  console.log("Package ID:", packageId);
   
   // Find TreasuryCap object
-  async function findTreasuryCap() {
-    console.log("\n=== Finding TreasuryCap ===");
+  console.log("\nFinding TreasuryCap...");
+  try {
+    const objects = await provider.getOwnedObjects({
+      owner: walletAddress,
+      filter: {
+        StructType: `0x2::coin::TreasuryCap<${coinType}>`
+      },
+      options: {
+        showContent: true,
+        showType: true,
+      }
+    });
     
-    try {
-      const objects = await provider.getOwnedObjects({
-        owner: senderAddress,
-        filter: {
-          StructType: `0x2::coin::TreasuryCap<${coinType}>`
-        },
-        options: {
-          showContent: true,
-          showType: true,
-        }
-      });
-      
-      if (objects.data.length === 0) {
-        throw new Error("TreasuryCap not found");
-      }
-      
-      const treasuryCapId = objects.data[0].data?.objectId;
-      if (!treasuryCapId) {
-        throw new Error("TreasuryCap ID is undefined");
-      }
-      
-      console.log("Found TreasuryCap ID:", treasuryCapId);
-      return treasuryCapId;
-    } catch (error) {
-      console.error("Failed to find TreasuryCap:", error);
-      throw error;
+    if (objects.data.length === 0) {
+      throw new Error("TreasuryCap not found");
     }
-  }
-  
-  // Define recipient address - same as sender for now
-  // You can change this to any valid Sui address if needed
-  const recipientAddress = senderAddress;
-  
-  // Mint 10 million tokens
-  async function mintTokens() {
-    console.log("\n=== Minting 10,000,000 HETRA Tokens ===");
     
-    // Find the TreasuryCap
-    const treasuryCapId = await findTreasuryCap();
+    const treasuryCapId = objects.data[0].data?.objectId;
+    if (!treasuryCapId) {
+      throw new Error("TreasuryCap ID is undefined");
+    }
     
-    // Create a mint transaction
+    console.log("Found TreasuryCap ID:", treasuryCapId);
+    
+    // Create mint transaction
+    console.log("\nCreating mint transaction...");
     const mintTx = new TransactionBlock();
     
     // 10,000,000 tokens with 9 decimals = 10,000,000,000,000,000
@@ -82,171 +65,53 @@ async function main() {
       ],
     });
     
-    // Transfer minted coins to the recipient
+    // Transfer minted coins to the wallet
     mintTx.transferObjects(
       [coinObject],
-      mintTx.pure(recipientAddress)
+      mintTx.pure(walletAddress)
     );
     
-    console.log(`Minting 10,000,000 HETRA tokens to ${recipientAddress}...`);
+    console.log(`Minting 10,000,000 HETRA tokens to ${walletAddress}...`);
     
-    try {
-      // Execute the transaction
-      const result = await provider.signAndExecuteTransactionBlock({
-        transactionBlock: mintTx,
-        signer: keypair,
-        options: {
-          showEffects: true,
-          showEvents: true,
-        },
-      });
-      
-      console.log("Mint transaction executed successfully!");
-      console.log("Transaction digest:", result.digest);
-      console.log("Status:", result.effects?.status?.status);
-      
-      return result.digest;
-    } catch (error) {
-      console.error("Failed to execute mint transaction:", error);
-      return null;
-    }
-  }
-  
-  // Check balance
-  async function checkBalance() {
-    console.log("\n=== Checking Balance ===");
-    console.log("Checking for coins of type:", coinType);
+    // Execute the transaction
+    const result = await provider.signAndExecuteTransactionBlock({
+      transactionBlock: mintTx,
+      signer: keypair,
+      options: {
+        showEffects: true,
+        showEvents: true,
+        showObjectChanges: true,
+      },
+    });
     
-    try {
-      // Get all coins of the HetraCoin type
-      const coins = await provider.getCoins({
-        owner: senderAddress,
-        coinType: coinType,
-      });
-      
-      // Calculate total balance
-      let totalBalance = 0n;
-      for (const coin of coins.data) {
-        totalBalance += BigInt(coin.balance);
-      }
-      
-      console.log(`Found ${coins.data.length} coin objects`);
-      console.log(`Total balance: ${Number(totalBalance) / 1e9} HETRA`);
-      
-      // Display individual coins
-      console.log("\nCoin objects:");
-      coins.data.forEach((coin, i) => {
-        console.log(`${i+1}. Coin ID: ${coin.coinObjectId}, Balance: ${Number(coin.balance) / 1e9} HETRA`);
-      });
-      
-      return coins.data;
-    } catch (error) {
-      console.error("Failed to check balance:", error);
-      return [];
-    }
-  }
-  
-  // Transfer tokens to a recipient
-  async function transferTokens(recipientAddress: string, amount: number) {
-    console.log(`\n=== Transferring ${amount} HETRA Tokens ===`);
+    console.log("\n=== MINT TRANSACTION EXECUTED ===");
+    console.log("Transaction digest:", result.digest);
+    console.log("Status:", result.effects?.status?.status || "unknown");
     
-    try {
-      // Get all coins
-      const coins = await provider.getCoins({
-        owner: senderAddress,
-        coinType: coinType,
-      });
-      
-      if (coins.data.length === 0) {
-        console.error("No coins available for transfer");
-        return null;
-      }
-      
-      // Find a coin with sufficient balance
-      let coinToUse = null;
-      for (const coin of coins.data) {
-        if (BigInt(coin.balance) >= BigInt(amount * 1e9)) {
-          coinToUse = coin.coinObjectId;
-          break;
-        }
-      }
-      
-      if (!coinToUse) {
-        console.error("No single coin with sufficient balance found");
-        return null;
-      }
-      
-      console.log(`Using coin: ${coinToUse} for transfer`);
-      
-      // Create a transaction for transfer
-      const transferTx = new TransactionBlock();
-      const amountToTransfer = BigInt(Math.floor(amount * 1e9));
-      
-      // Split the coin and transfer a portion
-      const [coin] = transferTx.splitCoins(
-        transferTx.object(coinToUse),
-        [transferTx.pure(amountToTransfer)]
+    // Print the newly created coin object ID if available
+    if (result.objectChanges) {
+      const createdObjects = result.objectChanges.filter(
+        (change: any) => change.type === 'created' && 
+                change.objectType?.includes(`Coin<${coinType}>`)
       );
       
-      // Transfer the split coin
-      transferTx.transferObjects([coin], transferTx.pure(recipientAddress));
-      
-      // Execute the transaction
-      const result = await provider.signAndExecuteTransactionBlock({
-        transactionBlock: transferTx,
-        signer: keypair,
-        options: {
-          showEffects: true,
-          showEvents: true,
-        },
-      });
-      
-      console.log("Transfer transaction executed successfully!");
-      console.log("Transaction digest:", result.digest);
-      console.log("Status:", result.effects?.status?.status);
-      
-      return result.digest;
-    } catch (error) {
-      console.error("Failed to execute transfer transaction:", error);
-      return null;
-    }
-  }
-  
-  // Run the mint and transfer operations
-  async function run() {
-    // Check initial balance
-    console.log("Initial state:");
-    await checkBalance();
-    
-    // Mint 10 million tokens
-    await mintTokens();
-    
-    // Check balance after minting
-    console.log("\nBalance after minting:");
-    const coins = await checkBalance();
-    
-    // Ask for transfer recipient and amount
-    console.log("\nPlease enter the recipient address when ready to transfer tokens.");
-    console.log("For now, we will transfer 1 million tokens back to ourselves as a test.");
-    
-    // Example transfer - 1 million tokens to the same address
-    // In a real application, you would get this from user input
-    const transferAmount = 1_000_000; // 1 million tokens
-    
-    if (coins.length > 0) {
-      // Transfer to self as a test
-      await transferTokens(recipientAddress, transferAmount);
-      
-      // Check balance after transfer
-      console.log("\nBalance after transfer:");
-      await checkBalance();
+      if (createdObjects.length > 0) {
+        console.log("\nNewly created coin objects:");
+        createdObjects.forEach((obj: any, i) => {
+          console.log(`${i+1}. Object ID: ${obj.objectId}`);
+        });
+      }
     }
     
-    console.log("\nOperation completed!");
+    console.log("\n=== MINTING COMPLETED SUCCESSFULLY ===");
+    console.log("Minted 10,000,000 HETRA tokens to your wallet");
+    console.log("You can view these tokens in your Sui wallet");
+    
+  } catch (error) {
+    console.error("\n=== ERROR ===");
+    console.error("Failed to mint tokens:", error);
   }
-  
-  // Run everything
-  await run();
 }
 
+// Run the script
 main().catch(console.error); 

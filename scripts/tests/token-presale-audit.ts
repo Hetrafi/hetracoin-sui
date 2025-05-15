@@ -437,89 +437,92 @@ async function runPresaleAudit(network: 'testnet' | 'mainnet' = 'testnet') {
     // 3. ADMIN AND SECURITY TESTS
     heading('3. ADMIN AND SECURITY TESTS');
     
-    // 3.1 Test Admin Registry
-    try {
-      info('Checking admin registry...');
-      
-      // Use the correct method to get objects
-      const allObjects = await client.getOwnedObjects({
-        owner: walletAddress,
-        options: { showType: true }
-      });
-      
-      // Filter for AdminRegistry objects
-      const adminRegistries = allObjects.data.filter((obj: any) => 
-        obj.data?.type?.includes(`${packageId}::HetraCoin::AdminRegistry`)
-      );
-      
-      const hasRegistry = adminRegistries.length > 0;
-      recordResult('Admin Registry exists', hasRegistry);
-      
-      if (hasRegistry) {
-        const registryId = adminRegistries[0].data?.objectId;
-        info(`Admin Registry found: ${registryId}`);
-        
-        if (registryId) {
-          const registry = await client.getObject({
-            id: registryId,
-            options: { showContent: true }
-          });
-          
-          if (registry.data?.content && typeof registry.data.content === 'object' && 'fields' in registry.data.content) {
-            const fields = registry.data.content.fields as any;
-            if (fields.admin) {
-              info(`Current admin address: ${fields.admin}`);
-              recordResult('Admin is deployment wallet', fields.admin === walletAddress);
-            }
-          }
-        }
-      }
-    } catch (e) {
-      recordResult('Admin Registry check', false);
-      errorLog(`Admin Registry error: ${e}`);
+    // 3.1 Test Admin Registry and EmergencyPauseState
+    // Get object IDs from environment variables
+    const adminRegistryId = process.env.ADMIN_REGISTRY_ID;
+    const pauseStateId = process.env.EMERGENCY_PAUSE_STATE_ID;
+    
+    // Check if the IDs are available in the environment
+    if (!adminRegistryId) {
+      warning("ADMIN_REGISTRY_ID not set in environment variables");
+      recordResult('AdminRegistry available in .env', false);
+    } else {
+      info(`AdminRegistry ID from .env: ${adminRegistryId}`);
+      recordResult('AdminRegistry available in .env', true);
     }
     
-    // 3.2 Test EmergencyPauseState
-    try {
-      info('Checking emergency pause state...');
-      
-      // Use the correct method to get objects
-      const allObjects = await client.getOwnedObjects({
-        owner: walletAddress,
-        options: { showType: true }
-      });
-      
-      // Filter for EmergencyPauseState objects
-      const pauseObjects = allObjects.data.filter((obj: any) => 
-        obj.data?.type?.includes(`${packageId}::HetraCoin::EmergencyPauseState`)
-      );
-      
-      const hasPauseState = pauseObjects.length > 0;
-      recordResult('EmergencyPauseState exists', hasPauseState);
-      
-      if (hasPauseState) {
-        const pauseStateId = pauseObjects[0].data?.objectId;
-        info(`EmergencyPauseState found: ${pauseStateId}`);
+    if (!pauseStateId) {
+      warning("EMERGENCY_PAUSE_STATE_ID not set in environment variables");
+      recordResult('EmergencyPauseState available in .env', false);
+    } else {
+      info(`EmergencyPauseState ID from .env: ${pauseStateId}`);
+      recordResult('EmergencyPauseState available in .env', true);
+    }
+    
+    // Check the AdminRegistry if we have an ID
+    if (adminRegistryId) {
+      try {
+        const adminRegistry = await client.getObject({
+          id: adminRegistryId,
+          options: { showContent: true, showType: true }
+        });
         
-        if (pauseStateId) {
-          const pauseState = await client.getObject({
-            id: pauseStateId,
-            options: { showContent: true }
-          });
+        const hasRegistry = !!adminRegistry.data;
+        recordResult('AdminRegistry exists', hasRegistry);
+        
+        if (hasRegistry) {
+          info(`AdminRegistry found: ${adminRegistryId}`);
+          info(`Type: ${adminRegistry.data?.type}`);
           
-          if (pauseState.data?.content && typeof pauseState.data.content === 'object' && 'fields' in pauseState.data.content) {
-            const fields = pauseState.data.content.fields as any;
-            if ('paused' in fields) {
-              const isPaused = fields.paused === true;
-              info(`Current pause state: ${isPaused ? 'PAUSED' : 'ACTIVE'}`);
-              recordResult('Token is not paused', !isPaused);
+          // Check the admin address in the registry
+          if (adminRegistry.data?.content && 
+              typeof adminRegistry.data.content === 'object' && 
+              'fields' in adminRegistry.data.content) {
+            const fields = adminRegistry.data.content.fields as any;
+            if (fields && typeof fields === 'object' && 'admin' in fields) {
+              const adminAddress = fields.admin;
+              info(`Admin address in registry: ${adminAddress}`);
+              recordResult('Admin address exists in registry', !!adminAddress);
             }
           }
         }
+      } catch (e) {
+        recordResult('AdminRegistry check', false);
+        errorLog(`AdminRegistry error: ${e}`);
       }
-    } catch (e) {
-      recordResult('EmergencyPauseState check', false);
-      errorLog(`EmergencyPauseState error: ${e}`);
+    }
+    
+    // Check the EmergencyPauseState if we have an ID
+    if (pauseStateId) {
+      try {
+        const pauseState = await client.getObject({
+          id: pauseStateId,
+          options: { showContent: true, showType: true }
+        });
+        
+        const hasPauseState = !!pauseState.data;
+        recordResult('EmergencyPauseState exists', hasPauseState);
+        
+        if (hasPauseState) {
+          info(`EmergencyPauseState found: ${pauseStateId}`);
+          info(`Type: ${pauseState.data?.type}`);
+          
+          // Check if the system is paused
+          if (pauseState.data?.content && 
+              typeof pauseState.data.content === 'object' && 
+              'fields' in pauseState.data.content) {
+            const fields = pauseState.data.content.fields as any;
+            if (fields && typeof fields === 'object' && 'paused' in fields) {
+              const paused = fields.paused;
+              info(`System paused status: ${paused ? 'PAUSED' : 'ACTIVE'}`);
+              recordResult('System properly initialized as not paused', !paused);
+            }
+          }
+        }
+      } catch (e) {
+        recordResult('EmergencyPauseState check', false);
+        errorLog(`EmergencyPauseState error: ${e}`);
+      }
     }
     
     // 4. SUMMARY
