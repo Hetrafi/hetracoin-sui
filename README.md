@@ -42,15 +42,20 @@ sources/
   ├── HetraCoin.move      # Core token implementation
   ├── Governance.move     # Admin and mint/burn security
   ├── Treasury.move       # Fund management with timelock
-  ├── Escrow.move         # P2P transaction security
-  ├── Staking.move        # Token staking functionality
-  ├── LiquidityPool.move  # Exchange functionality
-  ├── Proposal.move       # Governance voting
-  ├── Hetrafi.move        # Ecosystem integration
   └── docs/               # Documentation
       └── audit-readiness.md  # Audit preparation guide
+
+future_contracts/phase_2/
+  ├── Staking.move        # Token staking functionality (ready for upgrade)
+  ├── Escrow.move         # P2P transaction security
+  ├── LiquidityPool.move  # Exchange functionality
+  ├── Proposal.move       # Governance voting
+  └── Hetrafi.move        # Ecosystem integration
+
 tests/
   ├── unit/               # Unit tests
+  │   ├── StakingTest.move
+  │   └── StakingBatchTest.move 
   └── integration/        # Integration tests
 ```
 
