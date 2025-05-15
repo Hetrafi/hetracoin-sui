@@ -1,0 +1,18 @@
+# Move package configuration for Phase 2 HetraCoin modules
+[package]
+name = "hetracoin-phase2"
+version = "0.1.0"
+published-at = "0x0"
+authors = ["Hetrafi Dev Team"]
+edition = "2024"
+
+# Dependencies
+[dependencies]
+# Using compatible version with local CLI 1.49.0
+Sui = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "framework/mainnet" }
+# This will be replaced by the actual hetracoin package ID in tests
+HetraCoin = { local = "../../" }
+
+# Address placeholders
+[addresses]
+hetracoin = "0x0" 

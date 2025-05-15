@@ -119,10 +119,10 @@ module hetracoin::HetraCoin {
         timestamp: u64
     }
 
-    /// @notice Maximum total supply for the HETRA token (1 trillion)
+    /// @notice Maximum total supply for the HETRA token (1 billion with 9 decimals)
     /// @dev Used to ensure the supply never exceeds this amount
     ///      Provides economic predictability for the token ecosystem
-    const MAX_SUPPLY: u64 = 1_000_000_000;
+    const MAX_SUPPLY: u64 = 1_000_000_000_000_000_000; // 1 billion tokens with 9 decimals
 
     /// @notice Internal: Core logic to create currency, cap, and metadata
     /// @dev Requires the witness instance to ensure single initialization
@@ -139,7 +139,7 @@ module hetracoin::HetraCoin {
             b"HETRA",       // 3. Symbol
             b"HetraCoin",   // 4. Name
             b"Decentralized gaming token for HetraFi", // 5. Description
-            option::some(url::new_unsafe_from_bytes(b"https://cyan-careful-badger-476.mypinata.cloud/ipfs/bafkreifxjlyskkuh2mhj4mohiyg7b3br3jsrrosmazmlomhcgquhejhjjy")), // 6. Icon URL
+            option::some(url::new_unsafe_from_bytes(b"https://cyan-careful-badger-476.mypinata.cloud/ipfs/bafkreic3li5r3gt3wqrbkepq23ru5nckeoxfpbzelondeix3usfdvqmbii")), // 6. Icon URL
             ctx            // 7. Context
         )
     }
@@ -284,11 +284,16 @@ module hetracoin::HetraCoin {
     /// @notice Burns HETRA tokens, reducing total supply
     /// @dev Only requires treasury capability for authorization
     /// @param treasury_cap The treasury capability for burning
+    /// @param pause_state Emergency pause state to check if system is paused
     /// @param coin_to_burn The tokens to burn
     public fun burn(
         treasury_cap: &mut TreasuryCap<HETRACOIN>,
+        pause_state: &EmergencyPauseState,
         coin_to_burn: Coin<HETRACOIN>
     ) {
+        // Check that system is not paused
+        assert!(!pause_state.paused, E_SYSTEM_PAUSED);
+        
         coin::burn(treasury_cap, coin_to_burn);
     }
 
@@ -338,23 +343,7 @@ module hetracoin::HetraCoin {
         pause_state.paused
     }
 
-    /// @notice Get the admin address from the registry
-    /// @dev Public accessor for the admin field
-    /// @param registry The admin registry
-    /// @return Current admin address
-    public fun get_admin(registry: &AdminRegistry): address {
-        registry.admin
-    }
-
-    /// @notice Set the admin address in the registry
-    /// @dev Public setter for the admin field
-    /// @param registry The admin registry to modify
-    /// @param new_admin The new admin address to set
-    public fun set_admin(registry: &mut AdminRegistry, new_admin: address) {
-        registry.admin = new_admin;
-    }
-
-    /// @notice Toggle the emergency pause state
+    /// @notice Toggles the emergency pause state
     /// @dev Only callable by admin, emits event when state changes
     /// @param pause_state The pause state to modify
     /// @param registry Admin registry for authorization

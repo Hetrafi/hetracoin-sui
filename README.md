@@ -102,12 +102,45 @@ The following areas deserve particular attention during security review:
 - Emergency pause functionality (`HetraCoin.move`)
 - Reentrancy protection in fund handling (`LiquidityPool.move`)
 
+## Upgradeability
+
+HetraCoin is designed with upgradeability in mind, allowing the contract to evolve while maintaining all existing objects and balances:
+
+- **Additive Upgrades:** New modules and functions can be added without disrupting existing functionality
+- **Package Versioning:** The Sui blockchain maintains package versioning automatically
+- **Upgrade Capability:** Protected by the admin account for secure upgrades
+- **Documentation:** Comprehensive upgrade guide available at `docs/UPGRADEABILITY_GUIDE.md`
+
+### Recently Added - Staking Module
+
+The Staking module has been added to enable token holders to:
+
+- Stake HETRA tokens and earn rewards
+- Participate in governance based on stake amounts
+- Lock tokens for predetermined periods for enhanced rewards
+- Track staking history and rewards through on-chain events
+
+### Upgrade Process
+
+For developers and administrators looking to upgrade the HetraCoin ecosystem:
+
+1. Prepare new modules or modify existing ones following compatibility guidelines
+2. Build and test the upgrade in a testnet environment
+3. Use the `sui client upgrade` command with the correct upgrade capability
+4. Verify the upgrade was successful by testing new functionality
+
+Full step-by-step instructions are available in the `docs/UPGRADEABILITY_GUIDE.md` file, including:
+- Detailed walkthrough for adding new modules
+- Troubleshooting common upgrade issues
+- Best practices for secure upgrades
+
 ## Development
 
 ### Prerequisites
 
-- Sui CLI (version 1.0.0 or higher)
+- Sui CLI (version 1.48.0 or higher)
 - Move language extension for your editor
+- Node.js and npm for TypeScript deployment scripts
 
 ### Building
 
@@ -121,6 +154,16 @@ sui move build
 sui move test
 ```
 
+### Deployment and Upgrades
+
+```
+# Initial deployment
+npm run deploy:phase1:testnet
+
+# Upgrade with new modules
+npm run upgrade:testnet
+```
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the LICENSE file for details.
@@ -131,7 +174,3 @@ For security-related inquiries: security@hetrafi.com
 For general development questions: cavan@hetrafi.com
 
 ---
-
-*HetraCoin is currently in development and not yet ready for production use.*
-
-

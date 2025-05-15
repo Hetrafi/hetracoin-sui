@@ -1,70 +1,54 @@
-import { Ed25519Keypair } from '@mysten/sui.js/keypairs/ed25519';
+import { getFullnodeUrl, SuiClient } from '@mysten/sui.js/client';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
-import { SuiClient } from '@mysten/sui.js/client';
+import { Ed25519Keypair } from '@mysten/sui.js/keypairs/ed25519';
+import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
-import * as dotenv from 'dotenv';
-import { fromB64 } from '@mysten/sui.js/utils';
 
 dotenv.config();
 
+// Initialize SuiClient
+const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+
+/**
+ * Test the Staking module functionality after upgrade
+ */
 async function testStaking() {
-  // Initialize client
-  const client = new SuiClient({ url: 'https://fullnode.testnet.sui.io:443' });
-  
-  // Create keypair
-  const privateKeyString = process.env.DEPLOYER_PRIVATE_KEY as string;
-  let privateKeyArray = fromB64(privateKeyString);
-  
-  if (privateKeyArray.length === 33 && privateKeyArray[0] === 0) {
-    privateKeyArray = privateKeyArray.slice(1);
-  }
-  
-  const keypair = Ed25519Keypair.fromSecretKey(privateKeyArray);
-  const walletAddress = keypair.getPublicKey().toSuiAddress();
-  
-  // Load deployment info
-  const deploymentInfo = JSON.parse(fs.readFileSync(path.join(__dirname, '../../deployment-testnet.json'), 'utf8'));
-  const packageId = deploymentInfo.packageId;
-  
-  console.log('Testing Staking module...');
-  console.log('Package ID:', packageId);
-  console.log('Wallet address:', walletAddress);
-  
-  // Find a HetraCoin object to stake
-  let hetraCoinId = '';
-  const allCoins = await client.getOwnedObjects({
-    owner: walletAddress,
-    options: { showContent: true, showType: true }
-  });
-
-  const coins = {
-    data: allCoins.data.filter(obj => 
-      obj.data?.type && obj.data.type.includes('HETRACOIN')
-    )
-  };
-
-  if (coins.data && coins.data.length > 0 && coins.data[0].data) {
-    hetraCoinId = coins.data[0].data.objectId;
-    console.log(`Found HetraCoin to stake: ${hetraCoinId}`);
-  } else {
-    throw new Error('No HetraCoin found to stake');
-  }
-  
-  // Create a staking pool
-  const tx = new TransactionBlock();
-  
-  tx.moveCall({
-    target: `${packageId}::Staking::create_staking_pool`,
-    arguments: [
-      tx.pure(10), // reward_rate
-      tx.pure(86400), // lock_period (1 day)
-    ],
-  });
-  
   try {
+    console.log('Testing Staking module functionality...');
+    
+    // Get environment variables
+    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+    const packageIdV2 = process.env.PACKAGE_ID_V2 || process.env.PACKAGE_ID;
+    
+    if (!privateKey || !packageIdV2) {
+      throw new Error('Missing required environment variables. Make sure DEPLOYER_PRIVATE_KEY and PACKAGE_ID_V2 are set in .env file');
+    }
+    
+    // Create keypair from private key
+    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
+    const sender = keypair.getPublicKey().toSuiAddress();
+    
+    console.log(`Sender address: ${sender}`);
+    console.log(`Package ID: ${packageIdV2}`);
+    
+    // Create a staking pool
+    console.log('\nCreating a staking pool...');
+    
+    const txb = new TransactionBlock();
+    
+    // Call the create_staking_pool function
+    txb.moveCall({
+      target: `${packageIdV2}::Staking::create_staking_pool`,
+      arguments: [
+        txb.pure(500),  // reward_rate: 5%
+        txb.pure(30),   // min_lock_period: 30 days
+      ],
+    });
+    
+    // Execute the transaction
     const result = await client.signAndExecuteTransactionBlock({
-      transactionBlock: tx,
+      transactionBlock: txb,
       signer: keypair,
       options: {
         showEffects: true,
@@ -72,53 +56,72 @@ async function testStaking() {
       },
     });
     
-    console.log('Transaction successful!');
-    console.log('Digest:', result.digest);
-    console.log('Effects:', JSON.stringify(result.effects, null, 2));
+    console.log('\nStaking pool creation transaction result:');
+    console.log(`Transaction digest: ${result.digest}`);
+    console.log('Status:', result.effects?.status?.status);
     
-    if (result.objectChanges) {
-      console.log('Created objects:');
-      for (const change of result.objectChanges) {
-        if (change.type === 'created') {
-          console.log(`- ${change.objectId} (${change.objectType})`);
+    if (result.effects?.status?.status === 'success') {
+      console.log('\n✅ Staking pool created successfully!');
+      
+      // Find the staking pool from created objects
+      let stakingPoolId = '';
+      if (result.objectChanges) {
+        for (const change of result.objectChanges) {
+          // Check if this is a created object of the right type
+          if (
+            change.type === 'created' && 
+            'objectType' in change && 
+            change.objectType.includes('::Staking::StakingPool') &&
+            'objectId' in change
+          ) {
+            stakingPoolId = change.objectId;
+            break;
+          }
         }
       }
-    }
-
-    // After creating the staking pool and getting the result
-    let stakingPoolId = '';
-    if (result.objectChanges) {
-      for (const change of result.objectChanges) {
-        if (change.type === 'created' && change.objectType.includes('StakingPool')) {
-          stakingPoolId = change.objectId;
-          console.log(`Created staking pool: ${stakingPoolId}`);
-          break;
+      
+      if (stakingPoolId) {
+        console.log(`\nCreated Staking Pool ID: ${stakingPoolId}`);
+        
+        // Update the .env file with the staking pool ID
+        console.log('\nUpdating .env file with the staking pool ID...');
+        let envContent = fs.readFileSync(path.join(__dirname, '../../.env'), 'utf8');
+        
+        if (envContent.includes('STAKING_POOL_ID=')) {
+          // Update existing variable
+          envContent = envContent.replace(/STAKING_POOL_ID=.*/, `STAKING_POOL_ID=${stakingPoolId}`);
+        } else {
+          // Add new variable
+          envContent += `\nSTAKING_POOL_ID=${stakingPoolId}`;
         }
+        
+        fs.writeFileSync(path.join(__dirname, '../../.env'), envContent);
+        console.log('Updated .env file with STAKING_POOL_ID');
+      } else {
+        console.log('No staking pool object found in transaction results');
+      }
+    } else {
+      console.error('\n❌ Staking pool creation failed');
+      if (result.effects?.status?.error) {
+        console.error('Error:', result.effects.status.error);
       }
     }
-
-    if (!stakingPoolId) {
-      throw new Error('Failed to create staking pool');
-    }
-
-    // Then use stakingPoolId in your stake function call
-    // Update the stake function call
-    const stakeTx = new TransactionBlock();
-
-    // Split the coin to stake a small amount
-    const [splitCoin] = stakeTx.splitCoins(stakeTx.object(hetraCoinId), [stakeTx.pure(100)]);
-
-    // Call the stake function with the correct arguments
-    stakeTx.moveCall({
-      target: `${packageId}::Staking::stake`,
-      arguments: [
-        stakeTx.object(stakingPoolId), // The staking pool
-        splitCoin,                     // The coin to stake
-      ],
-    });
+    
+    return result.digest;
   } catch (error) {
-    console.error('Transaction failed:', error);
+    console.error('Error testing Staking module:', error);
+    throw error;
   }
 }
 
-testStaking().catch(console.error); 
+// Execute if run directly
+if (require.main === module) {
+  testStaking()
+    .then(() => process.exit(0))
+    .catch(err => {
+      console.error(err);
+      process.exit(1);
+    });
+}
+
+export { testStaking }; 

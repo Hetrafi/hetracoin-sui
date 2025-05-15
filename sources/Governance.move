@@ -146,6 +146,7 @@ module hetracoin::Governance {
     /// @dev Only callable by the current admin
     /// @param treasury_cap Treasury capability for burning
     /// @param registry Admin registry for authorization
+    /// @param pause_state Emergency pause state to prevent burning when paused
     /// @param coin_to_burn Tokens to be permanently removed from circulation
     /// @param ctx Transaction context for authorization and events
     public fun burn(
@@ -168,7 +169,8 @@ module hetracoin::Governance {
         // Ensure amount is greater than zero
         assert!(amount > 0, E_ZERO_AMOUNT);
         
-        coin::burn(treasury_cap, coin_to_burn);
+        // Use HetraCoin's burn function which now checks pause state itself
+        HetraCoin::burn(treasury_cap, pause_state, coin_to_burn);
 
         // Emit on-chain burn event
         event::emit(BurnEvent {
@@ -212,6 +214,8 @@ module hetracoin::Governance {
     /// @param admin_cap Admin capability confirming authority
     /// @param ctx Transaction context for authorization and timing
     public fun accept_governance_transfer(
+        treasury_cap: &TreasuryCap<HETRACOIN>,
+        admin_cap: &AdminCap,
         transfer_request: GovernanceTransferRequest,
         registry: &mut AdminRegistry,
         ctx: &mut TxContext
@@ -231,15 +235,8 @@ module hetracoin::Governance {
             EREQUEST_EXPIRED
         ); // 24 hours
         
-        // Update admin in the AdminRegistry using the accessor function
-        HetraCoin::set_admin(registry, sender);
-        
-        // Emit an event to track the admin change for transparency
-        event::emit(AdminTransferEvent {
-            previous_admin: transfer_request.from,
-            new_admin: sender,
-            timestamp: tx_context::epoch(ctx)
-        });
+        // Use the secure change_admin function to update admin
+        HetraCoin::change_admin(treasury_cap, admin_cap, registry, sender, ctx);
         
         // Destroy the request
         let GovernanceTransferRequest { id, from: _, to: _, timestamp: _ } = transfer_request;
@@ -381,7 +378,7 @@ module hetracoin::Governance {
     /// @param transfer_request Transfer request object created in first step
     /// @param ctx Transaction context for authorization and timing
     public entry fun accept_treasury_cap_transfer(
-        treasury_cap: TreasuryCap<HETRACOIN>, 
+        mut treasury_cap: TreasuryCap<HETRACOIN>, 
         admin_cap: AdminCap,
         registry: &mut AdminRegistry,
         transfer_request: TreasuryCapTransferRequest,
@@ -398,9 +395,11 @@ module hetracoin::Governance {
             EREQUEST_EXPIRED
         );
         
-        // Update registry to recognize the new admin using accessor function
-        let previous_admin = HetraCoin::get_admin(registry);
-        HetraCoin::set_admin(registry, sender);
+        // Get the previous admin for event emission
+        let previous_admin = HetraCoin::governance_admin(registry);
+        
+        // Use the secure method to change admin
+        HetraCoin::change_admin(&mut treasury_cap, &admin_cap, registry, sender, ctx);
         
         // Transfer the capabilities to the new admin
         transfer::public_transfer(treasury_cap, sender);
