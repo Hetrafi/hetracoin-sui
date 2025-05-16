@@ -52,3 +52,9 @@ sui/
 .trace
 aisettings
 rustup-init.exe
+
+*.txt
+*sign
+*multisig*
+
+transfer-objects.ts

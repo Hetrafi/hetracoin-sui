@@ -9,7 +9,7 @@ import * as readline from 'readline';
 dotenv.config();
 
 // Initialize SuiClient
-const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
 
 // DO NOT create readline interface globally - create it inside each function that needs it
 
@@ -277,6 +277,60 @@ export async function transferTreasuryCap(newAdminAddress: string): Promise<stri
   }
 }
 
+/**
+ * Transfer upgrade cap to a new address
+ * 
+ * @param newAdminAddress - Address to transfer upgrade cap to
+ * @returns Transaction digest
+ */
+export async function transferUpgradeCap(newAdminAddress: string): Promise<string> {
+  try {
+    // Get environment variables
+    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
+    }
+
+    // Get upgrade cap ID from environment variables
+    const upgradeCapId = process.env.UPGRADE_CAP_ID;
+
+    if (!upgradeCapId) {
+      throw new Error('Missing required environment variable. Make sure UPGRADE_CAP_ID is set in .env file');
+    }
+    
+    // Create keypair from private key
+    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
+    const sender = keypair.getPublicKey().toSuiAddress();
+    
+    console.log(`\nTransferring upgrade cap from ${sender} to ${newAdminAddress}`);
+    console.log(`Using UpgradeCap ID: ${upgradeCapId}`);
+    
+    // Create transaction block
+    const txb = new TransactionBlock();
+    
+    // Transfer the upgrade cap
+    txb.transferObjects([txb.object(upgradeCapId)], txb.pure(newAdminAddress));
+    
+    // Execute the transaction
+    const result = await client.signAndExecuteTransactionBlock({
+      transactionBlock: txb,
+      signer: keypair,
+      options: {
+        showEffects: true,
+      },
+    });
+    
+    console.log('\nUpgrade cap transfer transaction successful!');
+    console.log(`Transaction digest: ${result.digest}`);
+    console.log('Status:', result.effects?.status?.status);
+    
+    return result.digest;
+  } catch (error) {
+    console.error('Error transferring upgrade cap:', error);
+    throw error;
+  }
+}
+
 // Interactive CLI for changing admin
 async function interactiveChangeAdmin(rl: readline.Interface) {
   console.log('=== HetraCoin Change Admin ===');
@@ -448,6 +502,63 @@ async function interactiveTransferTreasuryCap(rl: readline.Interface) {
   }
 }
 
+// Interactive CLI for transferring upgrade cap
+async function interactiveTransferUpgradeCap(rl: readline.Interface) {
+  console.log('=== HetraCoin Transfer Upgrade Cap ===');
+  
+  try {
+    // Get wallet address
+    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
+    if (!privateKey) {
+      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
+    }
+    
+    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
+    const address = keypair.getPublicKey().toSuiAddress();
+    
+    console.log(`\nCurrent wallet address: ${address}`);
+    
+    // Get the upgrade cap ID from environment
+    const upgradeCapId = process.env.UPGRADE_CAP_ID;
+    if (!upgradeCapId) {
+      throw new Error('UPGRADE_CAP_ID not found in .env file');
+    }
+    
+    console.log(`Upgrade Cap ID: ${upgradeCapId}`);
+    
+    // Ask for new admin address
+    const newAdminAddress = await promptUser(rl, '\nEnter the address to transfer the upgrade cap to (0x...): ');
+    
+    if (!newAdminAddress.startsWith('0x') || newAdminAddress.length < 20) {
+      console.error('Error: Invalid address. Must start with 0x and be a valid Sui address.');
+      rl.close();
+      return;
+    }
+    
+    // Confirmation
+    console.log('\nUpgrade Cap Transfer Details:');
+    console.log(`  From: ${address}`);
+    console.log(`  To: ${newAdminAddress}`);
+    
+    const confirm = await promptUser(rl, '\nWARNING: This will transfer the upgrade cap to another address. The current holder will lose control over package upgrades. Confirm? (yes/no): ');
+    
+    if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
+      console.log('Upgrade cap transfer cancelled.');
+      rl.close();
+      return;
+    }
+    
+    // Execute upgrade cap transfer
+    await transferUpgradeCap(newAdminAddress);
+    
+    console.log('\nUpgrade cap transfer completed successfully!');
+  } catch (error) {
+    console.error(`\nError during upgrade cap transfer: ${error}`);
+  } finally {
+    rl.close();
+  }
+}
+
 // Interactive CLI for checking admin
 async function interactiveGetAdmin(rl: readline.Interface) {
   console.log('=== HetraCoin Admin Check ===');
@@ -490,8 +601,9 @@ if (require.main === module) {
       console.log('2. Change admin');
       console.log('3. Transfer admin cap');
       console.log('4. Transfer treasury cap');
+      console.log('5. Transfer upgrade cap');
       
-      const choice = await promptUser(menuRL, '\nSelect an operation (1-4): ');
+      const choice = await promptUser(menuRL, '\nSelect an operation (1-5): ');
       
       // Close the menu readline before opening a new one
       menuRL.close();
@@ -531,6 +643,15 @@ if (require.main === module) {
             output: process.stdout
           });
           interactiveTransferTreasuryCap(transferTreasuryRL);
+          break;
+          
+        case '5':
+          // Create a new readline for upgrade cap transfer
+          const transferUpgradeRL = readline.createInterface({
+            input: process.stdin,
+            output: process.stdout
+          });
+          interactiveTransferUpgradeCap(transferUpgradeRL);
           break;
           
         default:
@@ -580,6 +701,19 @@ if (require.main === module) {
           });
         break;
         
+      case 'transfer-upgrade-cap':
+        if (args.length < 2) {
+          console.log('Please provide the new admin address to transfer the upgrade cap to');
+          process.exit(1);
+        }
+        transferUpgradeCap(args[1])
+          .then(() => process.exit(0))
+          .catch(err => {
+            console.error(err);
+            process.exit(1);
+          });
+        break;
+        
       case 'get-admin':
         getCurrentAdmin()
           .then(admin => {
@@ -599,6 +733,7 @@ if (require.main === module) {
         console.log('    npx ts-node admin.ts change-admin <new_admin_address>');
         console.log('    npx ts-node admin.ts transfer-cap <new_admin_address>');
         console.log('    npx ts-node admin.ts transfer-treasury-cap <new_admin_address>');
+        console.log('    npx ts-node admin.ts transfer-upgrade-cap <new_admin_address>');
         console.log('    npx ts-node admin.ts get-admin');
         process.exit(1);
     }
@@ -609,6 +744,7 @@ if (require.main === module) {
     console.log('    npx ts-node admin.ts change-admin <new_admin_address>');
     console.log('    npx ts-node admin.ts transfer-cap <new_admin_address>');
     console.log('    npx ts-node admin.ts transfer-treasury-cap <new_admin_address>');
+    console.log('    npx ts-node admin.ts transfer-upgrade-cap <new_admin_address>');
     console.log('    npx ts-node admin.ts get-admin');
     process.exit(1);
   }

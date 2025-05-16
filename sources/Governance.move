@@ -88,7 +88,7 @@ module hetracoin::Governance {
     /// @param new_admin Address of the new administrator
     /// @param ctx Transaction context for authorization
     public entry fun change_admin(
-        treasury_cap: &mut TreasuryCap<HETRACOIN>,
+        treasury_cap: &TreasuryCap<HETRACOIN>,
         governance_cap: &GovernanceCap, 
         registry: &mut AdminRegistry,
         admin_cap: &AdminCap,
@@ -378,7 +378,7 @@ module hetracoin::Governance {
     /// @param transfer_request Transfer request object created in first step
     /// @param ctx Transaction context for authorization and timing
     public entry fun accept_treasury_cap_transfer(
-        mut treasury_cap: TreasuryCap<HETRACOIN>, 
+        treasury_cap: TreasuryCap<HETRACOIN>, 
         admin_cap: AdminCap,
         registry: &mut AdminRegistry,
         transfer_request: TreasuryCapTransferRequest,
@@ -399,7 +399,7 @@ module hetracoin::Governance {
         let previous_admin = HetraCoin::governance_admin(registry);
         
         // Use the secure method to change admin
-        HetraCoin::change_admin(&mut treasury_cap, &admin_cap, registry, sender, ctx);
+        HetraCoin::change_admin(&treasury_cap, &admin_cap, registry, sender, ctx);
         
         // Transfer the capabilities to the new admin
         transfer::public_transfer(treasury_cap, sender);

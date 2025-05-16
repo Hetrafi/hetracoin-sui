@@ -7,7 +7,7 @@ import * as readline from 'readline';
 dotenv.config();
 
 // Initialize SuiClient
-const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
 
 /**
  * Format a number with commas for readability

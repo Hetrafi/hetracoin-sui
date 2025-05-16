@@ -9,7 +9,7 @@ import * as readline from 'readline';
 dotenv.config();
 
 // Initialize SuiClient
-const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
 
 // DO NOT create readline interface globally - create it inside each function that needs it
 

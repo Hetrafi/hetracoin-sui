@@ -57,6 +57,7 @@ tests/
   │   ├── StakingTest.move
   │   └── StakingBatchTest.move 
   └── integration/        # Integration tests
+  
 ```
 
 ## Audit Readiness

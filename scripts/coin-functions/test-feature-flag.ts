@@ -7,7 +7,7 @@ import * as readline from 'readline';
 dotenv.config();
 
 // Initialize SuiClient
-const client = new SuiClient({ url: getFullnodeUrl('testnet') });
+const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
 
 // Create readline interface for user input
 const rl = readline.createInterface({
