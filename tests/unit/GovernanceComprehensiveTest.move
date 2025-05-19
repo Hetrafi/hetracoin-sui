@@ -189,7 +189,7 @@ module hetracoin::GovernanceComprehensiveTest {
             let mut registry = ts::take_shared<AdminRegistry>(&scenario);
             
             // Accept the transfer - now USER1 is already the admin so this should work
-            Governance::accept_governance_transfer(transfer_request, &mut registry, ts::ctx(&mut scenario));
+            Governance::accept_governance_transfer(&treasury_cap, &admin_cap, transfer_request, &mut registry, ts::ctx(&mut scenario));
 
             // Verify admin is still USER1
             assert_eq(HetraCoin::governance_admin(&registry), USER1);
@@ -233,7 +233,7 @@ module hetracoin::GovernanceComprehensiveTest {
             let mut registry = ts::take_shared<AdminRegistry>(&scenario);
 
             // This should fail as USER2 is not the recipient
-            Governance::accept_governance_transfer(transfer_request, &mut registry, ts::ctx(&mut scenario));
+            Governance::accept_governance_transfer(&treasury_cap, &admin_cap, transfer_request, &mut registry, ts::ctx(&mut scenario));
 
             // Cleanup (won't be reached)
             ts::return_to_address(ADMIN, treasury_cap);
@@ -289,11 +289,15 @@ module hetracoin::GovernanceComprehensiveTest {
             let transfer_request = ts::take_from_sender<GovernanceTransferRequest>(&scenario);
             let admin_cap = ts::take_from_sender<AdminCap>(&scenario);
             let mut registry = ts::take_shared<AdminRegistry>(&scenario);
+            
+            // Get treasury_cap from ADMIN
+            let treasury_cap = ts::take_from_address<TreasuryCap<HETRACOIN>>(&scenario, ADMIN);
 
             // This should fail with EREQUEST_EXPIRED since the request timestamp is more than 24 hours old
-            Governance::accept_governance_transfer(transfer_request, &mut registry, ts::ctx(&mut scenario));
+            Governance::accept_governance_transfer(&treasury_cap, &admin_cap, transfer_request, &mut registry, ts::ctx(&mut scenario));
 
             // Cleanup (won't be reached)
+            ts::return_to_address(ADMIN, treasury_cap);
             ts::return_to_sender(&scenario, admin_cap);
             ts::return_shared(registry);
         };

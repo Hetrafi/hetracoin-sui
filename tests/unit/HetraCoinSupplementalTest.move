@@ -22,7 +22,7 @@ module hetracoin::HetraCoinSupplementalTest {
     const USER2: address = @0xCA101;
     const TREASURY: address = @0xCAFE;
     const AMOUNT: u64 = 100000;
-    const MAX_SUPPLY: u64 = 1000000000000; // This should match the MAX_SUPPLY in HetraCoin
+    const MAX_SUPPLY: u64 = 1_000_000_000_000_000_000; // 1 billion tokens with 9 decimals (matches HetraCoin.move)
 
     // Error codes - these should match HetraCoin
     const E_ZERO_AMOUNT: u64 = 1;

@@ -1,15 +1,16 @@
-import { getFullnodeUrl, SuiClient } from '@mysten/sui.js/client';
+import { SuiClient } from '@mysten/sui.js/client';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { Ed25519Keypair } from '@mysten/sui.js/keypairs/ed25519';
+import { fromB64 } from '@mysten/sui.js/utils';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 
-dotenv.config();
+// Import our network-config utility
+const networkConfig = require('../utility/network-config');
 
-// Initialize SuiClient
-const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
+dotenv.config();
 
 // DO NOT create readline interface globally - create it inside each function that needs it
 
@@ -42,29 +43,45 @@ function formatNumber(num: bigint | number): string {
  * @param newAdminAddress - Address of the new admin
  * @returns Transaction digest
  */
-export async function changeAdmin(newAdminAddress: string): Promise<string> {
+async function changeAdmin(newAdminAddress: string): Promise<string> {
   try {
-    // Get environment variables
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
+    
+    // Validate required configuration
+    if (!config.deployerPrivateKey) {
+      throw new Error('Deployer private key not found in environment variables');
     }
 
-    // Get package ID and object IDs from environment variables
-    const packageId = process.env.PACKAGE_ID;
-    const treasuryCapId = process.env.TREASURY_CAP_ID;
-    const adminCapId = process.env.ADMIN_CAP_ID;
-    const adminRegistryId = process.env.ADMIN_REGISTRY_ID;
+    // Get package ID and object IDs from environment
+    const packageId = config.packageId;
+    const treasuryCapId = config.treasuryCapAddress;
+    const adminCapId = config.adminCapAddress;
+    const adminRegistryId = config.adminRegistryAddress;
 
     if (!packageId || !treasuryCapId || !adminCapId || !adminRegistryId) {
-      throw new Error('Missing required environment variables. Make sure PACKAGE_ID, TREASURY_CAP_ID, ADMIN_CAP_ID, and ADMIN_REGISTRY_ID are set in .env file');
+      throw new Error(`Missing required configuration. Make sure the following are set for ${config.network}:
+      - PACKAGE_ID
+      - TREASURY_CAP_ADDRESS
+      - ADMIN_CAP_ADDRESS
+      - ADMIN_REGISTRY_ADDRESS`);
     }
     
+    // Initialize client with network-specific RPC URL
+    const client = new SuiClient({ url: config.rpcUrl });
+    
     // Create keypair from private key
-    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
+    let keyData = fromB64(config.deployerPrivateKey);
+    // Ensure we have exactly 32 bytes
+    if (keyData.length !== 32) {
+      keyData = keyData.slice(0, 32);
+    }
+    const keypair = Ed25519Keypair.fromSecretKey(keyData);
     const sender = keypair.getPublicKey().toSuiAddress();
     
-    console.log(`\nChanging admin from ${sender} to ${newAdminAddress}`);
+    console.log(`\nChanging admin on ${config.network}`);
+    console.log(`From: ${sender}`);
+    console.log(`To: ${newAdminAddress}`);
     console.log(`Using Package ID: ${packageId}`);
     console.log(`Using AdminCap ID: ${adminCapId}`);
     
@@ -96,6 +113,12 @@ export async function changeAdmin(newAdminAddress: string): Promise<string> {
     console.log(`Transaction digest: ${result.digest}`);
     console.log('Status:', result.effects?.status?.status);
     
+    // Display explorer URL
+    const explorer = config.network === 'mainnet'
+      ? 'https://explorer.sui.io/txblock'
+      : 'https://explorer.testnet.sui.io/txblock';
+    console.log(`Explorer URL: ${explorer}/${result.digest}?network=${config.network}`);
+    
     if (result.events && result.events.length > 0) {
       console.log('Events:');
       result.events.forEach((event, index) => {
@@ -118,16 +141,25 @@ export async function changeAdmin(newAdminAddress: string): Promise<string> {
  * 
  * @returns Current admin address
  */
-export async function getCurrentAdmin(): Promise<string> {
+async function getCurrentAdmin(): Promise<string> {
   try {
-    // Get package ID and object IDs from environment variables
-    const packageId = process.env.PACKAGE_ID;
-    const adminRegistryId = process.env.ADMIN_REGISTRY_ID;
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
+    
+    // Get package ID and object IDs from environment
+    const packageId = config.packageId;
+    const adminRegistryId = config.adminRegistryAddress;
 
     if (!packageId || !adminRegistryId) {
-      throw new Error('Missing required environment variables. Make sure PACKAGE_ID and ADMIN_REGISTRY_ID are set in .env file');
+      throw new Error(`Missing required configuration. Make sure the following are set for ${config.network}:
+      - PACKAGE_ID
+      - ADMIN_REGISTRY_ADDRESS`);
     }
     
+    // Initialize client with network-specific RPC URL
+    const client = new SuiClient({ url: config.rpcUrl });
+    
+    console.log(`Getting current admin on ${config.network}`);
     console.log(`Using Package ID: ${packageId}`);
     console.log(`Using AdminRegistry ID: ${adminRegistryId}`);
     
@@ -175,32 +207,44 @@ export async function getCurrentAdmin(): Promise<string> {
  * @param newAdminAddress - Address to transfer admin cap to
  * @returns Transaction digest
  */
-export async function transferAdminCap(newAdminAddress: string): Promise<string> {
+async function transferAdminCap(newAdminAddress: string): Promise<string> {
   try {
-    // Get environment variables
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
+    
+    // Validate required configuration
+    if (!config.deployerPrivateKey) {
+      throw new Error('Deployer private key not found in environment variables');
     }
 
     // Get admin cap ID from environment variables
-    const adminCapId = process.env.ADMIN_CAP_ID;
+    const adminCapId = config.adminCapAddress;
 
     if (!adminCapId) {
-      throw new Error('Missing required environment variable. Make sure ADMIN_CAP_ID is set in .env file');
+      throw new Error(`Missing required configuration. Make sure ADMIN_CAP_ADDRESS is set for ${config.network}`);
     }
     
+    // Initialize client with network-specific RPC URL
+    const client = new SuiClient({ url: config.rpcUrl });
+    
     // Create keypair from private key
-    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
+    let keyData = fromB64(config.deployerPrivateKey);
+    // Ensure we have exactly 32 bytes
+    if (keyData.length !== 32) {
+      keyData = keyData.slice(0, 32);
+    }
+    const keypair = Ed25519Keypair.fromSecretKey(keyData);
     const sender = keypair.getPublicKey().toSuiAddress();
     
-    console.log(`\nTransferring admin cap from ${sender} to ${newAdminAddress}`);
+    console.log(`\nTransferring admin cap on ${config.network}`);
+    console.log(`From: ${sender}`);
+    console.log(`To: ${newAdminAddress}`);
     console.log(`Using AdminCap ID: ${adminCapId}`);
     
     // Create transaction block
     const txb = new TransactionBlock();
     
-    // Transfer the admin cap
+    // Transfer the admin cap directly
     txb.transferObjects([txb.object(adminCapId)], txb.pure(newAdminAddress));
     
     // Execute the transaction
@@ -209,12 +253,19 @@ export async function transferAdminCap(newAdminAddress: string): Promise<string>
       signer: keypair,
       options: {
         showEffects: true,
+        showEvents: true,
       },
     });
     
     console.log('\nAdmin cap transfer transaction successful!');
     console.log(`Transaction digest: ${result.digest}`);
     console.log('Status:', result.effects?.status?.status);
+    
+    // Display explorer URL
+    const explorer = config.network === 'mainnet'
+      ? 'https://explorer.sui.io/txblock'
+      : 'https://explorer.testnet.sui.io/txblock';
+    console.log(`Explorer URL: ${explorer}/${result.digest}?network=${config.network}`);
     
     return result.digest;
   } catch (error) {
@@ -229,32 +280,44 @@ export async function transferAdminCap(newAdminAddress: string): Promise<string>
  * @param newAdminAddress - Address to transfer treasury cap to
  * @returns Transaction digest
  */
-export async function transferTreasuryCap(newAdminAddress: string): Promise<string> {
+async function transferTreasuryCap(newAdminAddress: string): Promise<string> {
   try {
-    // Get environment variables
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
+    
+    // Validate required configuration
+    if (!config.deployerPrivateKey) {
+      throw new Error('Deployer private key not found in environment variables');
     }
 
-    // Get treasury cap ID from environment variables
-    const treasuryCapId = process.env.TREASURY_CAP_ID;
+    // Get treasury cap ID from environment
+    const treasuryCapId = config.treasuryCapAddress;
 
     if (!treasuryCapId) {
-      throw new Error('Missing required environment variable. Make sure TREASURY_CAP_ID is set in .env file');
+      throw new Error(`Missing required configuration. Make sure TREASURY_CAP_ADDRESS is set for ${config.network}`);
     }
     
+    // Initialize client with network-specific RPC URL
+    const client = new SuiClient({ url: config.rpcUrl });
+    
     // Create keypair from private key
-    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
+    let keyData = fromB64(config.deployerPrivateKey);
+    // Ensure we have exactly 32 bytes
+    if (keyData.length !== 32) {
+      keyData = keyData.slice(0, 32);
+    }
+    const keypair = Ed25519Keypair.fromSecretKey(keyData);
     const sender = keypair.getPublicKey().toSuiAddress();
     
-    console.log(`\nTransferring treasury cap from ${sender} to ${newAdminAddress}`);
+    console.log(`\nTransferring treasury cap on ${config.network}`);
+    console.log(`From: ${sender}`);
+    console.log(`To: ${newAdminAddress}`);
     console.log(`Using TreasuryCap ID: ${treasuryCapId}`);
     
     // Create transaction block
     const txb = new TransactionBlock();
     
-    // Transfer the treasury cap
+    // Transfer the treasury cap directly
     txb.transferObjects([txb.object(treasuryCapId)], txb.pure(newAdminAddress));
     
     // Execute the transaction
@@ -263,12 +326,19 @@ export async function transferTreasuryCap(newAdminAddress: string): Promise<stri
       signer: keypair,
       options: {
         showEffects: true,
+        showEvents: true,
       },
     });
     
     console.log('\nTreasury cap transfer transaction successful!');
     console.log(`Transaction digest: ${result.digest}`);
     console.log('Status:', result.effects?.status?.status);
+    
+    // Display explorer URL
+    const explorer = config.network === 'mainnet'
+      ? 'https://explorer.sui.io/txblock'
+      : 'https://explorer.testnet.sui.io/txblock';
+    console.log(`Explorer URL: ${explorer}/${result.digest}?network=${config.network}`);
     
     return result.digest;
   } catch (error) {
@@ -283,32 +353,44 @@ export async function transferTreasuryCap(newAdminAddress: string): Promise<stri
  * @param newAdminAddress - Address to transfer upgrade cap to
  * @returns Transaction digest
  */
-export async function transferUpgradeCap(newAdminAddress: string): Promise<string> {
+async function transferUpgradeCap(newAdminAddress: string): Promise<string> {
   try {
-    // Get environment variables
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
+    
+    // Validate required configuration
+    if (!config.deployerPrivateKey) {
+      throw new Error('Deployer private key not found in environment variables');
     }
 
-    // Get upgrade cap ID from environment variables
-    const upgradeCapId = process.env.UPGRADE_CAP_ID;
+    // Get upgrade cap ID from environment
+    const upgradeCapId = config.upgradeCapId;
 
     if (!upgradeCapId) {
-      throw new Error('Missing required environment variable. Make sure UPGRADE_CAP_ID is set in .env file');
+      throw new Error(`Missing required configuration. Make sure UPGRADE_CAP_ID is set for ${config.network}`);
     }
     
+    // Initialize client with network-specific RPC URL
+    const client = new SuiClient({ url: config.rpcUrl });
+    
     // Create keypair from private key
-    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
+    let keyData = fromB64(config.deployerPrivateKey);
+    // Ensure we have exactly 32 bytes
+    if (keyData.length !== 32) {
+      keyData = keyData.slice(0, 32);
+    }
+    const keypair = Ed25519Keypair.fromSecretKey(keyData);
     const sender = keypair.getPublicKey().toSuiAddress();
     
-    console.log(`\nTransferring upgrade cap from ${sender} to ${newAdminAddress}`);
+    console.log(`\nTransferring upgrade cap on ${config.network}`);
+    console.log(`From: ${sender}`);
+    console.log(`To: ${newAdminAddress}`);
     console.log(`Using UpgradeCap ID: ${upgradeCapId}`);
     
     // Create transaction block
     const txb = new TransactionBlock();
     
-    // Transfer the upgrade cap
+    // Transfer the upgrade cap directly
     txb.transferObjects([txb.object(upgradeCapId)], txb.pure(newAdminAddress));
     
     // Execute the transaction
@@ -317,12 +399,19 @@ export async function transferUpgradeCap(newAdminAddress: string): Promise<strin
       signer: keypair,
       options: {
         showEffects: true,
+        showEvents: true,
       },
     });
     
     console.log('\nUpgrade cap transfer transaction successful!');
     console.log(`Transaction digest: ${result.digest}`);
     console.log('Status:', result.effects?.status?.status);
+    
+    // Display explorer URL
+    const explorer = config.network === 'mainnet'
+      ? 'https://explorer.sui.io/txblock'
+      : 'https://explorer.testnet.sui.io/txblock';
+    console.log(`Explorer URL: ${explorer}/${result.digest}?network=${config.network}`);
     
     return result.digest;
   } catch (error) {
@@ -331,421 +420,261 @@ export async function transferUpgradeCap(newAdminAddress: string): Promise<strin
   }
 }
 
-// Interactive CLI for changing admin
+/**
+ * Interactive function to change admin
+ */
 async function interactiveChangeAdmin(rl: readline.Interface) {
-  console.log('=== HetraCoin Change Admin ===');
-  
   try {
-    // Get current admin first
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
+    
+    console.log('=== HetraCoin Admin Change Tool ===');
+    console.log(`Network: ${config.network.toUpperCase()}`);
+    
+    // Get current admin
     const currentAdmin = await getCurrentAdmin();
-    
-    console.log(`\nCurrent admin address: ${currentAdmin}`);
-    
-    // Get wallet address
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
-    }
-    
-    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
-    const address = keypair.getPublicKey().toSuiAddress();
-    
-    console.log(`Current wallet address: ${address}`);
-    
-    // NOTE: We've removed the check that forces wallet address to match current admin
-    // Let the contract decide if the operation is allowed
+    console.log(`Current admin: ${currentAdmin}`);
     
     // Ask for new admin address
-    const newAdminAddress = await promptUser(rl, '\nEnter the new admin address (0x...): ');
+    const newAdmin = await promptUser(rl, 'Enter the new admin address: ');
     
-    if (!newAdminAddress.startsWith('0x') || newAdminAddress.length < 20) {
-      console.error('Error: Invalid address. Must start with 0x and be a valid Sui address.');
-      rl.close();
+    if (!newAdmin.startsWith('0x')) {
+      console.error('Invalid Sui address. Address should start with 0x');
       return;
     }
     
-    // Confirmation
-    console.log('\nAdmin Change Details:');
-    console.log(`  Current admin: ${currentAdmin}`);
-    console.log(`  New admin: ${newAdminAddress}`);
+    // Confirm change
+    const confirm = await promptUser(rl, `\nReady to change admin from ${currentAdmin} to ${newAdmin} on ${config.network}. Proceed? (y/n): `);
     
-    const confirm = await promptUser(rl, '\nWARNING: This will change the admin. The current admin will lose control. Confirm? (yes/no): ');
-    
-    if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
+    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
       console.log('Admin change cancelled.');
-      rl.close();
       return;
     }
     
     // Execute admin change
-    await changeAdmin(newAdminAddress);
+    const txDigest = await changeAdmin(newAdmin);
+    console.log(`\nAdmin change completed. Transaction digest: ${txDigest}`);
     
-    console.log('\nAdmin change completed successfully!');
   } catch (error) {
-    console.error(`\nError during admin change: ${error}`);
-  } finally {
-    rl.close();
+    console.error('Error during admin change:', error);
   }
 }
 
-// Interactive CLI for transferring admin cap
+/**
+ * Interactive function to transfer admin cap
+ */
 async function interactiveTransferAdminCap(rl: readline.Interface) {
-  console.log('=== HetraCoin Transfer Admin Cap ===');
-  
   try {
-    // Get wallet address
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
-    }
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
     
-    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
-    const address = keypair.getPublicKey().toSuiAddress();
+    console.log('=== HetraCoin Admin Cap Transfer Tool ===');
+    console.log(`Network: ${config.network.toUpperCase()}`);
     
-    console.log(`\nCurrent wallet address: ${address}`);
-    
-    // Get the admin cap ID from environment
-    const adminCapId = process.env.ADMIN_CAP_ID;
-    if (!adminCapId) {
-      throw new Error('ADMIN_CAP_ID not found in .env file');
-    }
-    
-    console.log(`Admin Cap ID: ${adminCapId}`);
-    
-    // Ask for new admin address
-    const newAdminAddress = await promptUser(rl, '\nEnter the address to transfer the admin cap to (0x...): ');
-    
-    if (!newAdminAddress.startsWith('0x') || newAdminAddress.length < 20) {
-      console.error('Error: Invalid address. Must start with 0x and be a valid Sui address.');
-      rl.close();
+    // Check if admin cap ID is set
+    if (!config.adminCapAddress) {
+      console.error(`ADMIN_CAP_ADDRESS not found in environment for ${config.network}`);
       return;
     }
     
-    // Confirmation
-    console.log('\nAdmin Cap Transfer Details:');
-    console.log(`  From: ${address}`);
-    console.log(`  To: ${newAdminAddress}`);
+    console.log(`Admin Cap ID: ${config.adminCapAddress}`);
     
-    const confirm = await promptUser(rl, '\nWARNING: This will transfer the admin cap to another address. The current holder will lose control. Confirm? (yes/no): ');
+    // Ask for new admin address
+    const newAdmin = await promptUser(rl, 'Enter the recipient address for the admin cap: ');
     
-    if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
+    if (!newAdmin.startsWith('0x')) {
+      console.error('Invalid Sui address. Address should start with 0x');
+      return;
+    }
+    
+    // Confirm transfer
+    const confirm = await promptUser(rl, `\nReady to transfer admin cap to ${newAdmin} on ${config.network}. Proceed? (y/n): `);
+    
+    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
       console.log('Admin cap transfer cancelled.');
-      rl.close();
       return;
     }
     
     // Execute admin cap transfer
-    await transferAdminCap(newAdminAddress);
+    const txDigest = await transferAdminCap(newAdmin);
+    console.log(`\nAdmin cap transfer completed. Transaction digest: ${txDigest}`);
     
-    console.log('\nAdmin cap transfer completed successfully!');
   } catch (error) {
-    console.error(`\nError during admin cap transfer: ${error}`);
-  } finally {
-    rl.close();
+    console.error('Error during admin cap transfer:', error);
   }
 }
 
-// Interactive CLI for transferring treasury cap
+/**
+ * Interactive function to transfer treasury cap
+ */
 async function interactiveTransferTreasuryCap(rl: readline.Interface) {
-  console.log('=== HetraCoin Transfer Treasury Cap ===');
-  
   try {
-    // Get wallet address
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
-    }
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
     
-    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
-    const address = keypair.getPublicKey().toSuiAddress();
+    console.log('=== HetraCoin Treasury Cap Transfer Tool ===');
+    console.log(`Network: ${config.network.toUpperCase()}`);
     
-    console.log(`\nCurrent wallet address: ${address}`);
-    
-    // Get the treasury cap ID from environment
-    const treasuryCapId = process.env.TREASURY_CAP_ID;
-    if (!treasuryCapId) {
-      throw new Error('TREASURY_CAP_ID not found in .env file');
-    }
-    
-    console.log(`Treasury Cap ID: ${treasuryCapId}`);
-    
-    // Ask for new admin address
-    const newAdminAddress = await promptUser(rl, '\nEnter the address to transfer the treasury cap to (0x...): ');
-    
-    if (!newAdminAddress.startsWith('0x') || newAdminAddress.length < 20) {
-      console.error('Error: Invalid address. Must start with 0x and be a valid Sui address.');
-      rl.close();
+    // Check if treasury cap ID is set
+    if (!config.treasuryCapAddress) {
+      console.error(`TREASURY_CAP_ADDRESS not found in environment for ${config.network}`);
       return;
     }
     
-    // Confirmation
-    console.log('\nTreasury Cap Transfer Details:');
-    console.log(`  From: ${address}`);
-    console.log(`  To: ${newAdminAddress}`);
+    console.log(`Treasury Cap ID: ${config.treasuryCapAddress}`);
     
-    const confirm = await promptUser(rl, '\nWARNING: This will transfer the treasury cap to another address. The current holder will lose control over minting and burning tokens. Confirm? (yes/no): ');
+    // Ask for new admin address
+    const newAdmin = await promptUser(rl, 'Enter the recipient address for the treasury cap: ');
     
-    if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
+    if (!newAdmin.startsWith('0x')) {
+      console.error('Invalid Sui address. Address should start with 0x');
+      return;
+    }
+    
+    // Confirm transfer
+    const confirm = await promptUser(rl, `\nWARNING: Transferring the treasury cap will give the recipient full control over token minting!\nReady to transfer treasury cap to ${newAdmin} on ${config.network}. Proceed? (y/n): `);
+    
+    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
       console.log('Treasury cap transfer cancelled.');
-      rl.close();
       return;
     }
     
     // Execute treasury cap transfer
-    await transferTreasuryCap(newAdminAddress);
+    const txDigest = await transferTreasuryCap(newAdmin);
+    console.log(`\nTreasury cap transfer completed. Transaction digest: ${txDigest}`);
     
-    console.log('\nTreasury cap transfer completed successfully!');
   } catch (error) {
-    console.error(`\nError during treasury cap transfer: ${error}`);
-  } finally {
-    rl.close();
+    console.error('Error during treasury cap transfer:', error);
   }
 }
 
-// Interactive CLI for transferring upgrade cap
+/**
+ * Interactive function to transfer upgrade cap
+ */
 async function interactiveTransferUpgradeCap(rl: readline.Interface) {
-  console.log('=== HetraCoin Transfer Upgrade Cap ===');
-  
   try {
-    // Get wallet address
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
-    }
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
     
-    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
-    const address = keypair.getPublicKey().toSuiAddress();
+    console.log('=== HetraCoin Upgrade Cap Transfer Tool ===');
+    console.log(`Network: ${config.network.toUpperCase()}`);
     
-    console.log(`\nCurrent wallet address: ${address}`);
-    
-    // Get the upgrade cap ID from environment
-    const upgradeCapId = process.env.UPGRADE_CAP_ID;
-    if (!upgradeCapId) {
-      throw new Error('UPGRADE_CAP_ID not found in .env file');
-    }
-    
-    console.log(`Upgrade Cap ID: ${upgradeCapId}`);
-    
-    // Ask for new admin address
-    const newAdminAddress = await promptUser(rl, '\nEnter the address to transfer the upgrade cap to (0x...): ');
-    
-    if (!newAdminAddress.startsWith('0x') || newAdminAddress.length < 20) {
-      console.error('Error: Invalid address. Must start with 0x and be a valid Sui address.');
-      rl.close();
+    // Check if upgrade cap ID is set
+    if (!config.upgradeCapId) {
+      console.error(`UPGRADE_CAP_ID not found in environment for ${config.network}`);
       return;
     }
     
-    // Confirmation
-    console.log('\nUpgrade Cap Transfer Details:');
-    console.log(`  From: ${address}`);
-    console.log(`  To: ${newAdminAddress}`);
+    console.log(`Upgrade Cap ID: ${config.upgradeCapId}`);
     
-    const confirm = await promptUser(rl, '\nWARNING: This will transfer the upgrade cap to another address. The current holder will lose control over package upgrades. Confirm? (yes/no): ');
+    // Ask for new admin address
+    const newAdmin = await promptUser(rl, 'Enter the recipient address for the upgrade cap: ');
     
-    if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
+    if (!newAdmin.startsWith('0x')) {
+      console.error('Invalid Sui address. Address should start with 0x');
+      return;
+    }
+    
+    // Confirm transfer
+    const confirm = await promptUser(rl, `\nWARNING: Transferring the upgrade cap will give the recipient full control over contract upgrades!\nReady to transfer upgrade cap to ${newAdmin} on ${config.network}. Proceed? (y/n): `);
+    
+    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
       console.log('Upgrade cap transfer cancelled.');
-      rl.close();
       return;
     }
     
     // Execute upgrade cap transfer
-    await transferUpgradeCap(newAdminAddress);
+    const txDigest = await transferUpgradeCap(newAdmin);
+    console.log(`\nUpgrade cap transfer completed. Transaction digest: ${txDigest}`);
     
-    console.log('\nUpgrade cap transfer completed successfully!');
   } catch (error) {
-    console.error(`\nError during upgrade cap transfer: ${error}`);
-  } finally {
-    rl.close();
+    console.error('Error during upgrade cap transfer:', error);
   }
 }
 
-// Interactive CLI for checking admin
+/**
+ * Interactive function to get current admin
+ */
 async function interactiveGetAdmin(rl: readline.Interface) {
-  console.log('=== HetraCoin Admin Check ===');
-  
   try {
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
+    
+    console.log('=== HetraCoin Admin Info Tool ===');
+    console.log(`Network: ${config.network.toUpperCase()}`);
+    
+    // Get current admin
     const adminAddress = await getCurrentAdmin();
+    
     console.log(`\nCurrent admin address: ${adminAddress}`);
     
-    // Get wallet address to check if it matches
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (privateKey) {
-      const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
-      const walletAddress = keypair.getPublicKey().toSuiAddress();
-      
-      console.log(`Current wallet address: ${walletAddress}`);
-      console.log(`Is wallet the admin?: ${walletAddress === adminAddress ? 'YES' : 'NO'}`);
-    }
+    // Display explorer URL
+    const explorer = config.network === 'mainnet'
+      ? 'https://explorer.sui.io/address'
+      : 'https://explorer.testnet.sui.io/address';
+    console.log(`Explorer URL: ${explorer}/${adminAddress}?network=${config.network}`);
+    
   } catch (error) {
-    console.error(`\nError checking admin: ${error}`);
-  } finally {
-    rl.close();
+    console.error('Error getting admin info:', error);
   }
 }
 
-// CLI execution
+// Interactive CLI execution
 if (require.main === module) {
-  const args = process.argv.slice(2);
+  // Create readline interface
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
   
-  if (args.length === 0) {
-    // Interactive mode - show menu
-    (async () => {
-      // Create readline interface for the menu
-      const menuRL = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-      });
-      
-      console.log('=== HetraCoin Admin Controls ===');
-      console.log('1. Check current admin');
-      console.log('2. Change admin');
-      console.log('3. Transfer admin cap');
-      console.log('4. Transfer treasury cap');
-      console.log('5. Transfer upgrade cap');
-      
-      const choice = await promptUser(menuRL, '\nSelect an operation (1-5): ');
-      
-      // Close the menu readline before opening a new one
-      menuRL.close();
-      
+  // Get network configuration for display
+  const config = networkConfig.getNetworkConfig();
+  
+  console.log('=== HetraCoin Admin CLI ===');
+  console.log(`Network: ${config.network.toUpperCase()}`);
+  console.log('1. Change admin');
+  console.log('2. Transfer admin cap');
+  console.log('3. Transfer treasury cap');
+  console.log('4. Transfer upgrade cap');
+  console.log('5. Get current admin info');
+  console.log('0. Exit');
+  
+  promptUser(rl, '\nEnter choice (0-5): ').then(async (choice) => {
+    try {
       switch (choice) {
         case '1':
-          // Create a new readline for admin check
-          const checkRL = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-          });
-          interactiveGetAdmin(checkRL);
+          await interactiveChangeAdmin(rl);
           break;
-          
         case '2':
-          // Create a new readline for admin change
-          const changeRL = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-          });
-          interactiveChangeAdmin(changeRL);
+          await interactiveTransferAdminCap(rl);
           break;
-          
         case '3':
-          // Create a new readline for admin cap transfer
-          const transferRL = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-          });
-          interactiveTransferAdminCap(transferRL);
+          await interactiveTransferTreasuryCap(rl);
           break;
-          
         case '4':
-          // Create a new readline for treasury cap transfer
-          const transferTreasuryRL = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-          });
-          interactiveTransferTreasuryCap(transferTreasuryRL);
+          await interactiveTransferUpgradeCap(rl);
           break;
-          
         case '5':
-          // Create a new readline for upgrade cap transfer
-          const transferUpgradeRL = readline.createInterface({
-            input: process.stdin,
-            output: process.stdout
-          });
-          interactiveTransferUpgradeCap(transferUpgradeRL);
+          await interactiveGetAdmin(rl);
           break;
-          
+        case '0':
+          console.log('Exiting...');
+          break;
         default:
-          console.log('Invalid selection.');
+          console.log('Invalid choice');
       }
-    })();
-  } else if (args.length >= 1) {
-    const command = args[0];
-
-    switch (command) {
-      case 'change-admin':
-        if (args.length < 2) {
-          console.log('Please provide the new admin address');
-          process.exit(1);
-        }
-        changeAdmin(args[1])
-          .then(() => process.exit(0))
-          .catch(err => {
-            console.error(err);
-            process.exit(1);
-          });
-        break;
-        
-      case 'transfer-cap':
-        if (args.length < 2) {
-          console.log('Please provide the new admin address to transfer the admin cap to');
-          process.exit(1);
-        }
-        transferAdminCap(args[1])
-          .then(() => process.exit(0))
-          .catch(err => {
-            console.error(err);
-            process.exit(1);
-          });
-        break;
-        
-      case 'transfer-treasury-cap':
-        if (args.length < 2) {
-          console.log('Please provide the new admin address to transfer the treasury cap to');
-          process.exit(1);
-        }
-        transferTreasuryCap(args[1])
-          .then(() => process.exit(0))
-          .catch(err => {
-            console.error(err);
-            process.exit(1);
-          });
-        break;
-        
-      case 'transfer-upgrade-cap':
-        if (args.length < 2) {
-          console.log('Please provide the new admin address to transfer the upgrade cap to');
-          process.exit(1);
-        }
-        transferUpgradeCap(args[1])
-          .then(() => process.exit(0))
-          .catch(err => {
-            console.error(err);
-            process.exit(1);
-          });
-        break;
-        
-      case 'get-admin':
-        getCurrentAdmin()
-          .then(admin => {
-            console.log(`Current admin address: ${admin}`);
-            process.exit(0);
-          })
-          .catch(err => {
-            console.error(err);
-            process.exit(1);
-          });
-        break;
-        
-      default:
-        console.log('Usage:');
-        console.log('  Interactive mode: npx ts-node admin.ts');
-        console.log('  Command-line mode:');
-        console.log('    npx ts-node admin.ts change-admin <new_admin_address>');
-        console.log('    npx ts-node admin.ts transfer-cap <new_admin_address>');
-        console.log('    npx ts-node admin.ts transfer-treasury-cap <new_admin_address>');
-        console.log('    npx ts-node admin.ts transfer-upgrade-cap <new_admin_address>');
-        console.log('    npx ts-node admin.ts get-admin');
-        process.exit(1);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      rl.close();
     }
-  } else {
-    console.log('Usage:');
-    console.log('  Interactive mode: npx ts-node admin.ts');
-    console.log('  Command-line mode:');
-    console.log('    npx ts-node admin.ts change-admin <new_admin_address>');
-    console.log('    npx ts-node admin.ts transfer-cap <new_admin_address>');
-    console.log('    npx ts-node admin.ts transfer-treasury-cap <new_admin_address>');
-    console.log('    npx ts-node admin.ts transfer-upgrade-cap <new_admin_address>');
-    console.log('    npx ts-node admin.ts get-admin');
-    process.exit(1);
-  }
-} 
+  });
+}
+
+export {
+  changeAdmin,
+  getCurrentAdmin,
+  transferAdminCap,
+  transferTreasuryCap,
+  transferUpgradeCap
+}; 

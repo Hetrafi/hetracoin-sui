@@ -1,15 +1,16 @@
-import { getFullnodeUrl, SuiClient } from '@mysten/sui.js/client';
+import { SuiClient } from '@mysten/sui.js/client';
 import { TransactionBlock } from '@mysten/sui.js/transactions';
 import { Ed25519Keypair } from '@mysten/sui.js/keypairs/ed25519';
+import { fromB64 } from '@mysten/sui.js/utils';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
 
-dotenv.config();
+// Import our network-config utility
+const networkConfig = require('../utility/network-config');
 
-// Initialize SuiClient
-const client = new SuiClient({ url: getFullnodeUrl('mainnet') });
+dotenv.config();
 
 // Create readline interface for user input
 const rl = readline.createInterface({
@@ -48,30 +49,56 @@ function formatNumber(num: bigint | number): string {
  */
 export async function mintHetraCoin(amount: bigint, recipientAddress: string): Promise<string> {
   try {
-    // Get environment variables
-    const privateKey = process.env.DEPLOYER_PRIVATE_KEY;
-    if (!privateKey) {
-      throw new Error('DEPLOYER_PRIVATE_KEY not found in .env file');
+    // Get network configuration
+    const config = networkConfig.getNetworkConfig();
+    
+    // Validate required configuration
+    if (!config.deployerPrivateKey) {
+      throw new Error('Deployer private key not found in environment variables');
     }
 
-    // Get package ID and object IDs from environment variables
-    const packageId = process.env.PACKAGE_ID;
-    const treasuryCapId = process.env.TREASURY_CAP_ID;
-    const adminRegistryId = process.env.ADMIN_REGISTRY_ID;
-    const pauseStateId = process.env.EMERGENCY_PAUSE_STATE_ID;
+    // Get package ID and object IDs from environment
+    const packageId = config.packageId;
+    const treasuryCapId = config.treasuryCapAddress;
+    const adminRegistryId = config.adminRegistryAddress;
+    const pauseStateId = config.pauseStateAddress;
 
     if (!packageId || !treasuryCapId || !adminRegistryId || !pauseStateId) {
-      throw new Error('Missing required environment variables. Make sure PACKAGE_ID, TREASURY_CAP_ID, ADMIN_REGISTRY_ID, and EMERGENCY_PAUSE_STATE_ID are set in .env file');
+      const networkPrefix = config.network === 'testnet' ? 'TESTNET_' : 'MAINNET_';
+      // Provide detailed diagnostic message
+      let missingVars: string[] = [];
+      if (!packageId) missingVars.push(`PACKAGE_ID or ${networkPrefix}PACKAGE_ID`);
+      if (!treasuryCapId) missingVars.push(`TREASURY_CAP_ID or ${networkPrefix}TREASURY_CAP_ID`);
+      if (!adminRegistryId) missingVars.push(`ADMIN_REGISTRY_ID or ${networkPrefix}ADMIN_REGISTRY_ID`);
+      if (!pauseStateId) missingVars.push(`EMERGENCY_PAUSE_STATE_ID or ${networkPrefix}EMERGENCY_PAUSE_STATE_ID`);
+      
+      throw new Error(`Missing required configuration for ${config.network}. The following variables are missing:
+      ${missingVars.join('\n      ')}
+      
+Check your .env file to ensure you have correct environment variables.
+Run 'cat .env' to verify what values are set.
+
+After deployment, run the verify script to check your deployment:
+npx ts-node scripts/deployment/deploy-phase1.ts verify ${config.network}`);
     }
     
+    // Initialize client with network-specific RPC URL
+    const client = new SuiClient({ url: config.rpcUrl });
+    
     // Create keypair from private key
-    const keypair = Ed25519Keypair.fromSecretKey(Buffer.from(privateKey, 'base64'));
+    let keyData = fromB64(config.deployerPrivateKey);
+    // Ensure we have exactly 32 bytes
+    if (keyData.length !== 32) {
+      keyData = keyData.slice(0, 32);
+    }
+    const keypair = Ed25519Keypair.fromSecretKey(keyData);
     const sender = keypair.getPublicKey().toSuiAddress();
     
     // Calculate token amount from base units
     const tokenAmount = Number(amount) / 1e9;
     
-    console.log(`\nMinting tokens to ${recipientAddress}`);
+    console.log(`\nMinting tokens on ${config.network}`);
+    console.log(`Recipient: ${recipientAddress}`);
     console.log(`Amount: ${formatNumber(tokenAmount)} HETRA tokens (${formatNumber(amount)} base units)`);
     console.log(`Sender: ${sender}`);
     console.log(`Using Package ID: ${packageId}`);
@@ -93,7 +120,7 @@ export async function mintHetraCoin(amount: bigint, recipientAddress: string): P
         txb.object(treasuryCapId),
         txb.pure(amount),
         txb.object(adminRegistryId),
-        txb.object(pauseStateId),
+        txb.object(pauseStateId)
       ],
     });
     
@@ -113,6 +140,12 @@ export async function mintHetraCoin(amount: bigint, recipientAddress: string): P
     console.log('\nMint transaction successful!');
     console.log(`Transaction digest: ${result.digest}`);
     console.log('Status:', result.effects?.status?.status);
+    
+    // Display explorer URL - updated to use Suiscan
+    const explorer = config.network === 'mainnet'
+      ? 'https://suiscan.xyz/mainnet/tx'
+      : 'https://suiscan.xyz/testnet/tx';
+    console.log(`Explorer URL: ${explorer}/${result.digest}`);
     
     if (result.events && result.events.length > 0) {
       console.log('Events:');
@@ -134,6 +167,10 @@ export async function mintHetraCoin(amount: bigint, recipientAddress: string): P
 // Interactive CLI execution
 async function interactiveMint() {
   console.log('=== HetraCoin Mint Tool ===');
+  
+  // Display network information
+  const config = networkConfig.getNetworkConfig();
+  console.log(`Network: ${config.network.toUpperCase()}`);
   console.log('Note: HetraCoin has 9 decimal places.');
   console.log('Limits: Maximum 10 million tokens per transaction, 1 billion tokens total supply.');
   
@@ -198,157 +235,42 @@ async function interactiveMint() {
       const displayAmount = Number(amount) / 1e9;
       console.log(`This will mint ${formatNumber(displayAmount)} HETRA tokens`);
     } catch (e) {
-      console.error('Invalid amount. Please enter a valid number.');
-      rl.close();
-      return;
-    }
-    
-    // Validate amount (max 10M tokens per transaction)
-    const MAX_PER_MINT = BigInt(10_000_000) * BigInt(1_000_000_000); // 10M tokens with 9 decimals
-    if (amount > MAX_PER_MINT) {
-      console.error(`Error: Cannot mint more than 10,000,000 tokens in a single transaction.`);
-      console.error(`Your input would mint ${formatNumber(Number(amount) / 1e9)} tokens (${formatNumber(amount)} base units).`);
-      console.error(`Please enter a smaller amount (10,000,000 or less).`);
-      rl.close();
-      return;
-    } else if (amount <= 0) {
-      console.error('Error: Amount must be greater than 0');
+      console.error('Error parsing amount:', e);
       rl.close();
       return;
     }
     
     // Ask for recipient address
-    const recipient = await promptUser('Enter the recipient address (0x...): ');
+    const recipientAddress = await promptUser('Enter the recipient address: ');
     
-    if (!recipient.startsWith('0x') || recipient.length < 20) {
-      console.error('Error: Invalid recipient address. Must start with 0x and be a valid Sui address.');
+    if (!recipientAddress.startsWith('0x')) {
+      console.error('Invalid Sui address. Address should start with 0x');
       rl.close();
       return;
     }
     
-    // Confirmation
-    const displayAmount = Number(amount) / 1e9;
-    console.log('\nMint Details:');
-    console.log(`  Amount: ${formatNumber(displayAmount)} HETRA tokens`);
-    console.log(`  Amount in base units: ${formatNumber(amount)}`);
-    console.log(`  Recipient: ${recipient}`);
+    // Confirm mint operation
+    const confirm = await promptUser(`\nReady to mint ${formatNumber(Number(amount) / 1e9)} HETRA tokens to ${recipientAddress} on ${config.network}. Proceed? (y/n): `);
     
-    const confirm = await promptUser('\nConfirm mint transaction? (yes/no): ');
-    
-    if (confirm.toLowerCase() !== 'yes' && confirm.toLowerCase() !== 'y') {
-      console.log('Transaction cancelled.');
+    if (confirm.toLowerCase() !== 'y' && confirm.toLowerCase() !== 'yes') {
+      console.log('Mint operation cancelled.');
       rl.close();
       return;
     }
     
     // Execute mint
-    await mintHetraCoin(amount, recipient);
-    
-    console.log('\nMint operation completed successfully!');
+    const txDigest = await mintHetraCoin(amount, recipientAddress);
+    console.log(`\nMint transaction completed. Transaction digest: ${txDigest}`);
   } catch (error) {
-    console.error(`\nError during mint operation: ${error}`);
+    console.error('Error during mint process:', error);
   } finally {
     rl.close();
   }
 }
 
-// CLI execution
+// Run the interactive mint tool if called directly
 if (require.main === module) {
-  const args = process.argv.slice(2);
-  
-  if (args.length === 0) {
-    // Interactive mode
-    interactiveMint();
-  } else if (args.length >= 2) {
-    // Check for mode flag (--tokens or --base-units)
-    let isTokenMode = true;
-    let amountIndex = 0;
-    let recipientIndex = 1;
-    
-    if (args[0] === '--tokens') {
-      isTokenMode = true;
-      amountIndex = 1;
-      recipientIndex = 2;
-      if (args.length < 3) {
-        console.error('Missing amount or recipient address');
-        process.exit(1);
-      }
-    } else if (args[0] === '--base-units') {
-      isTokenMode = false;
-      amountIndex = 1;
-      recipientIndex = 2;
-      if (args.length < 3) {
-        console.error('Missing amount or recipient address');
-        process.exit(1);
-      }
-    }
-    
-    // Command-line arguments mode
-    let amount: bigint;
-    const amountStr = args[amountIndex];
-    
-    try {
-      if (isTokenMode) {
-        // Token mode - Convert to base units
-        if (amountStr.includes('.')) {
-          // Handle decimal input
-          const [whole, fraction] = amountStr.split('.');
-          // Pad the fraction to 9 decimal places
-          const paddedFraction = fraction.padEnd(9, '0').substring(0, 9);
-          // Convert to base units (multiply by 10^9)
-          amount = BigInt(whole) * BigInt(1_000_000_000) + BigInt(paddedFraction);
-        } else {
-          // Convert whole number to base units
-          amount = BigInt(amountStr) * BigInt(1_000_000_000);
-        }
-        console.log(`Minting ${amountStr} HETRA tokens (${amount} base units)`);
-      } else {
-        // Base units mode - Use the amount directly
-        amount = BigInt(amountStr);
-        const displayAmount = Number(amount) / 1e9;
-        console.log(`Minting ${amountStr} base units (${displayAmount} HETRA tokens)`);
-      }
-    } catch (e) {
-      console.error('Invalid amount. Please enter a valid number.');
-      process.exit(1);
-    }
-    
-    // Validate amount (max 10M tokens per transaction)
-    const MAX_PER_MINT = BigInt(10_000_000) * BigInt(1_000_000_000); // 10M tokens with 9 decimals
-    if (amount > MAX_PER_MINT) {
-      console.error(`Error: Cannot mint more than 10,000,000 tokens in a single transaction.`);
-      console.error(`Your input would mint ${formatNumber(Number(amount) / 1e9)} tokens (${formatNumber(amount)} base units).`);
-      console.error(`Please enter a smaller amount (10,000,000 or less).`);
-      process.exit(1);
-    }
-    
-    const recipient = args[recipientIndex];
-    
-    if (!recipient.startsWith('0x')) {
-      console.error('Invalid recipient address. Must start with 0x');
-      process.exit(1);
-    }
-    
-    mintHetraCoin(amount, recipient)
-      .then(() => {
-        console.log('Mint completed successfully');
-        process.exit(0);
-      })
-      .catch((err) => {
-        console.error('Mint failed with error:', err);
-        process.exit(1);
-      });
-  } else {
-    console.log('Usage:');
-    console.log('  Interactive mode: npx ts-node mint.ts');
-    console.log('  Command-line mode:');
-    console.log('    npx ts-node mint.ts [--tokens | --base-units] <amount> <recipient_address>');
-    console.log('\nExamples:');
-    console.log('  npx ts-node mint.ts 100 0x123...                  (Mints 100 HETRA tokens)');
-    console.log('  npx ts-node mint.ts --tokens 100 0x123...         (Mints 100 HETRA tokens)');
-    console.log('  npx ts-node mint.ts --base-units 1000000000 0x123...  (Mints 1 HETRA token)');
-    console.log('\nNote: By default, amounts are interpreted as HETRA tokens.');
-    console.log('      Use --base-units flag to specify amounts in base units directly.');
-    process.exit(1);
-  }
+  interactiveMint();
 }
+
+export { interactiveMint };

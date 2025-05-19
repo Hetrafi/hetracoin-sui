@@ -138,8 +138,8 @@ module hetracoin::HetraCoin {
             9u8,           // 2. Decimals
             b"HETRA",       // 3. Symbol
             b"HetraCoin",   // 4. Name
-            b"Decentralized gaming token for HetraFi", // 5. Description
-            option::some(url::new_unsafe_from_bytes(b"https://cyan-careful-badger-476.mypinata.cloud/ipfs/bafkreic3li5r3gt3wqrbkepq23ru5nckeoxfpbzelondeix3usfdvqmbii")), // 6. Icon URL
+            b"The official decentralized gaming token powering the Hetrafi ecosystem",  // 5. Description
+            option::some(url::new_unsafe_from_bytes(b"https://cyan-careful-badger-476.mypinata.cloud/ipfs/bafkreic3li5r3gt3wqrbkepq23ru5nckeoxfpbzelondeix3usfdvqmbii")), // 6. Icon URL 
             ctx            // 7. Context
         )
     }
